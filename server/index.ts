@@ -1,6 +1,12 @@
+import { getMigrations } from 'better-auth/db/migration';
 import { configuredApp } from './config';
 
 const app = configuredApp();
+const schema = await getMigrations(app.auth.options);
+if (schema.toBeCreated.length || schema.toBeAdded.length || schema.toBeAddedIndexes.length || schema.schemaProblems.length || schema.unsafeChanges.length) {
+  app.db.close();
+  throw new Error('Authentication schema is not ready. Review and run bun run server:migrate before starting the API.');
+}
 Bun.serve({
   hostname: '127.0.0.1',
   port: Number(process.env.PORT ?? 3000),

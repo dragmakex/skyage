@@ -95,7 +95,10 @@ const app = createApp(db, {
 });
 try {
   const migration = await getMigrations(app.auth.options);
+  assert.ok(migration.toBeCreated.length > 0, 'fresh databases require explicit migration');
   await migration.runMigrations();
+  const ready = await getMigrations(app.auth.options);
+  assert.deepEqual([ready.toBeCreated, ready.toBeAdded, ready.toBeAddedIndexes, ready.schemaProblems, ready.unsafeChanges], [[], [], [], [], []]);
   let requestCount = 0;
   async function call(path: string, body: unknown, cookie = '', user = '', ip = `192.0.2.${++requestCount}`) {
     return app.handle(new Request(`http://localhost:3000${path}`, {

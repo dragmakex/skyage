@@ -21,7 +21,7 @@ bun --env-file=/etc/skyage/api.env run server:migrate
 bun --env-file=/etc/skyage/api.env run server:start
 ```
 
-`server:migrate` applies Better Auth's schema migrations. The application tables are created idempotently. On a brand-new empty database, Better Auth may log an initial schema-mismatch diagnostic before its migration creates the tables. A failed migration must block deployment; do not start the service after an error. On subsequent deployments, review upstream auth migrations before running them.
+`server:migrate` applies Better Auth's schema migrations. The application tables are created idempotently. The API checks for pending auth schema changes at startup and refuses to listen until they are resolved. On a brand-new empty database, Better Auth may log an initial schema-mismatch diagnostic before its migration creates the tables. A failed migration must block deployment; do not start the service after an error. On subsequent deployments, review upstream auth migrations before running them.
 
 Use a systemd service with `User=skyage`, the repository as `WorkingDirectory`, `EnvironmentFile=/etc/skyage/api.env`, an absolute Bun executable path, `ExecStart=.../bun run server:start`, `Restart=on-failure`, `UMask=0077`, and `NoNewPrivileges=true`. Run migrations separately, not on every request.
 
