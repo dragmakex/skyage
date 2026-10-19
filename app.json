@@ -42,7 +42,8 @@
           "photosPermission": "Skyage reads the boarding pass picture you pick."
         }
       ],
-      "expo-document-picker"
+      "expo-document-picker",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
