@@ -1,6 +1,6 @@
 # Skyage
 
-A globe of every flight you have taken. Android, React Native (Expo). See `SPEC.md`.
+A globe of every flight you have taken. Android, React Native (Expo). `SPEC.md` describes the original offline app; optional accounts and sync are documented in [`server/README.md`](server/README.md).
 
 ## Run
 
@@ -24,9 +24,10 @@ Optional: copy `.env.example` to `.env` and set `EXPO_PUBLIC_AERODATABOX_KEY` fo
 ```sh
 bun run test --runInBand
 bun run typecheck
+bun run test:server
 ```
 
-On a device: add a route, rotate and pinch the globe, tap a city or flight path, select a flight from the list and use Show on globe. Check year filtering, the 20%/50%/92% drawer (drag or tap its handle), dark appearance with the phone in light mode, reduce motion, background/resume, airplane mode, and export/import. Restart and confirm saved flights persist.
+On a device: add a route, rotate and pinch the globe, tap a city or flight path, select a flight from the list and use Show on globe. Check year filtering, the 20%/50%/92% drawer (drag or tap its handle), light/dark appearance (dark by default), reduce motion, background/resume, airplane mode, and export/import. Restart and confirm saved flights persist. With an API configured, verify email-code login, explicit guest upload, pending/synced status, two-device sync, conflict choices and sign-out isolation.
 
 ## Globe
 
@@ -38,12 +39,14 @@ On a device: add a route, rotate and pinch the globe, tap a city or flight path,
 
 ## Design
 
-Always-dark zinc surfaces and Geist typography, inspired by [shadcn/ui](https://ui.shadcn.com/). The glass drawer starts at 20% and expands over the stationary globe.
+Dark-by-default zinc surfaces, optional light mode, and Geist typography, inspired by [shadcn/ui](https://ui.shadcn.com/). The glass drawer starts at 20% and expands over the stationary globe.
 
 [Glassapp Liquid Glass](https://liquid-glass.glassapp.dev/) is a DOM/WebGPU library and explicitly does not support native ports. This Android app uses a **native approximation**, not that package: dark tint, native blur, specular edges, and a solid fallback. It does not reproduce the reference's optical refraction. The shared globe blur target also serves the Add modal. Reduced-transparency settings on iOS disable blur.
 
 ## Notes
 
 - `bun install` applies `patches/three@0.166.1.patch`: Expo SDK 57 makes WebGL2 inherit from WebGL1, which Three.js r166 otherwise incorrectly rejects. Keep this patch until the renderer's context check supports that inheritance. `src/map/three-context.test.ts` protects the fix.
-- Flights live on the device only. Settings has Export (JSON) and Import (JSON or CSV with `date,from,to,flight`).
+- Flights always save locally in SQLite. Accounts are optional: set `EXPO_PUBLIC_API_URL` to enable email-code login and foreground sync to your own Bun + SQLite server. Existing guest flights upload only with explicit permission. See [`server/README.md`](server/README.md) for deployment, backup/restore, security and sync semantics.
+- Without a server URL the app stays local-only. Uninstalling the app can erase its local database; use JSON exports or cloud sync to retain flights elsewhere. Settings has Export (JSON) and Import (JSON or CSV with `date,from,to,flight`).
+- Rebuild existing native development clients with `bun run android` for the new SecureStore, Crypto and Network modules; a Metro refresh alone cannot install native modules.
 - Glass surfaces use blur where the platform can sample it. GL surface blur and frame rate need checking on real Android hardware; set `GLASS_BLUR` to `false` in `src/ui/tokens.ts` for the translucent fallback.

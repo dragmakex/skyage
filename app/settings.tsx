@@ -5,8 +5,9 @@ import * as Sharing from 'expo-sharing';
 import { ArrowLeft, DownloadSimple, Export } from 'phosphor-react-native';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AccountPanel } from '../src/account/AccountPanel';
 import { parseImport } from '../src/domain/csv';
-import { addFlights, allFlights, isDuplicate, newId, setSettings, useFlights, useSettings } from '../src/store';
+import { addFlights, allFlights, isDuplicate, newId, setSettings, useAccountData, useFlights, useSettings } from '../src/store';
 import { Button } from '../src/ui/Button';
 import { Chip } from '../src/ui/Chip';
 import { Txt, useTheme } from '../src/ui/theme';
@@ -16,6 +17,7 @@ export default function Settings() {
   const insets = useSafeAreaInsets();
   const s = useSettings();
   const flights = useFlights();
+  const { account } = useAccountData();
 
   const exportFlights = async () => {
     const file = new File(Paths.cache, 'skyage-flights.json');
@@ -56,6 +58,9 @@ export default function Settings() {
         <Txt size="title" weight="semi" style={{ marginLeft: 4 }}>Settings</Txt>
       </View>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 28, paddingBottom: insets.bottom + 24 }}>
+        <Section title="Account & sync">
+          <AccountPanel />
+        </Section>
         <Section title="Appearance">
           <View style={{ flexDirection: 'row', gap: 4 }}>
             {(['dark', 'light'] as const).map((theme) => (
@@ -71,7 +76,7 @@ export default function Settings() {
           </View>
         </Section>
         <Section title="Data">
-          <Txt size="caption" muted>{flights.length} flights stored on this device only.</Txt>
+          <Txt size="caption" muted>{flights.length} flights saved on this device{account ? ' for this account. See sync status above.' : ' only.'}</Txt>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Button title="Export" variant="secondary" icon={<Export size={16} color={c.foreground} />} onPress={exportFlights} disabled={flights.length === 0} style={{ flex: 1 }} />
             <Button title="Import" variant="secondary" icon={<DownloadSimple size={16} color={c.foreground} />} onPress={importFlights} style={{ flex: 1 }} />
