@@ -1,0 +1,42 @@
+diff --git a/build/three.cjs b/build/three.cjs
+index d6f842a902f3d0b61fc80362b54bab069f6fdd14..edd2cf09aa84ae3c8ea1554600a437c685eaf304 100644
+--- a/build/three.cjs
++++ b/build/three.cjs
+@@ -28576,7 +28576,8 @@ class WebGLRenderer {
+ 
+ 		if ( context !== null ) {
+ 
+-			if ( typeof WebGLRenderingContext !== 'undefined' && context instanceof WebGLRenderingContext ) {
++			if ( typeof WebGLRenderingContext !== 'undefined' && context instanceof WebGLRenderingContext &&
++				! ( typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext ) ) {
+ 
+ 				throw new Error( 'THREE.WebGLRenderer: WebGL 1 is not supported since r163.' );
+ 
+diff --git a/build/three.module.js b/build/three.module.js
+index d33f9c318f76da39df843683fd7cee5ca2c1b1ff..66a59cdc64156ace20a4ea9a8b28bf8175ab3a7c 100644
+--- a/build/three.module.js
++++ b/build/three.module.js
+@@ -28574,7 +28574,8 @@ class WebGLRenderer {
+ 
+ 		if ( context !== null ) {
+ 
+-			if ( typeof WebGLRenderingContext !== 'undefined' && context instanceof WebGLRenderingContext ) {
++			if ( typeof WebGLRenderingContext !== 'undefined' && context instanceof WebGLRenderingContext &&
++				! ( typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext ) ) {
+ 
+ 				throw new Error( 'THREE.WebGLRenderer: WebGL 1 is not supported since r163.' );
+ 
+diff --git a/src/renderers/WebGLRenderer.js b/src/renderers/WebGLRenderer.js
+index 7ad491b76f6355e3b92207598368fabef877e7bb..2434f74ea4e82ff8fc0e5dd4864b6f453d9be832 100644
+--- a/src/renderers/WebGLRenderer.js
++++ b/src/renderers/WebGLRenderer.js
+@@ -80,7 +80,8 @@ class WebGLRenderer {
+ 
+ 		if ( context !== null ) {
+ 
+-			if ( typeof WebGLRenderingContext !== 'undefined' && context instanceof WebGLRenderingContext ) {
++			if ( typeof WebGLRenderingContext !== 'undefined' && context instanceof WebGLRenderingContext &&
++				! ( typeof WebGL2RenderingContext !== 'undefined' && context instanceof WebGL2RenderingContext ) ) {
+ 
+ 				throw new Error( 'THREE.WebGLRenderer: WebGL 1 is not supported since r163.' );
+ 
