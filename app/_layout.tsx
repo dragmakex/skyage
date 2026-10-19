@@ -7,12 +7,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSyncLifecycle } from '../src/account/sync';
 import { ThemeProvider, useTheme } from '../src/ui/theme';
 import { BlurTargetContext } from '../src/ui/Glass';
 
 SplashScreen.preventAutoHideAsync();
 
 function Routes() {
+  useSyncLifecycle();
   const { c, mode } = useTheme();
   return (
     <>
