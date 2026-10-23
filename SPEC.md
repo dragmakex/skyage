@@ -23,9 +23,9 @@ Two honesty notes, per the design skill:
   conventions in React Native StyleSheet. If the team wants Tailwind classes, swap in
   React Native Reusables plus NativeWind, which is the community port of shadcn.
 - The reference at https://liquid-glass.glassapp.dev/ is a DOM/WebGPU library, not a
-  React Native library. Android uses a native approximation of its dark material:
-  blur, translucent black tint, polished highlight edges, and a solid fallback. This
-  does not reproduce the web renderer's optical refraction.
+  React Native library. Supported iOS builds use Apple's native Liquid Glass through
+  expo-glass-effect. Android uses native blur, tint and curved specular edges as an
+  approximation, not Apple's proprietary refraction or the web renderer.
 
 ---
 
@@ -35,13 +35,13 @@ Two honesty notes, per the design skill:
 - Custom Three.js globe centered on screen, drag to spin, pinch to zoom. Bundled country
   geography, no flat-map transition, street tiles, or map-service account
 - One great-circle line per flight between its two cities, city dots sized by visits,
-  city labels once zoomed in
+  no city labels on the globe
 - Slide-up sheet with three heights: stats, list, detail
 - Year filter in a floating glass capsule
 - Add flight three ways, all ending at one review step: scan boarding pass (camera or a
   picture from the gallery), flight number plus date, route plus date
 - Local storage only, JSON export and import, CSV import
-- Always dark, including forms, settings, native dialogs and the globe
+- Dark by default, with a saved light appearance for forms, settings, native dialogs and the globe
 
 ### Not now
 Accounts, sync, push, live aircraft positions, friends, Pro, widgets, Wear OS, PDF
@@ -65,23 +65,22 @@ Layout
 
 Globe style (Three.js sphere with a bundled Natural Earth geography mask)
 - Water and surrounding space use `background`, land uses `land`, country outlines use
-  `border`. Geography is 1:110m, rasterized to 1024×512. Routes and airport dots use
+  `countryBorder` (distinct gray in light mode). Geography is 1:110m, rasterized to 1024×512. Routes and airport dots use
   `flight` (#9BD8FF). No network map requests.
-- No roads, state borders, general place labels, atmosphere, or terrain. Natural Earth
-  public-domain credit appears in Settings.
+- No roads, state borders, city labels, atmosphere, or terrain. Natural Earth
+  public-domain credit appears in README.md.
 
 Flight layers
 - Lines: Three.js great circles, 96 segments each, just above the sphere. Past routes
   use light-blue tube geometry for high-DPI readability, opacity 0.85. Upcoming routes
   use dashed lines. With selection: selected route opacity 1, others 0.22.
 - Cities: small sphere meshes sized by visit count, fill `flight`.
-- Flight city labels: projected React Native Geist text in `mutedForeground`, shown
-  when zoomed in, culled on the back of the sphere and when labels overlap.
+- City names are shown in the list and detail, not projected over the globe.
 - Tap a line to select it. Tap a city to list its flights. Tap empty globe to deselect.
 
 Floating chrome (glass)
-- Top: a capsule with the year chips, All plus every year that has flights, scrolling
-  horizontally. Selected chip is `foreground` on `background`, others are text only.
+- Top: individually framed Liquid Glass year pills, All plus every year that has flights,
+  scrolling horizontally. Selected pills have a stronger tint and semibold label; no second enclosing rim.
 - Top right: a glass circle with the settings icon.
 - Nothing else floats. No FAB, no compass, no legend.
 
@@ -106,7 +105,8 @@ Selected flight
 - The sheet swaps to detail: origin and destination codes at display size with city names
   under each, then rows: date, airline and flight number, distance, duration when times
   are known, seat. Two actions: "Show on globe" (camera eases to fit the line) and
-  "Delete". A close button returns to the list. Selecting also flies the camera to the line.
+  "Delete". Details scroll so actions stay reachable at the half-screen snap. A close button
+  returns to the list. Selecting also flies the camera to the line.
 - Selected city: the city name as title, "12 flights", its rows beneath.
 
 ### 2.3 Add flight (modal sheet)
@@ -128,9 +128,9 @@ Review: from, to, date, airline, number, seat, all editable. Save. A duplicate a
 
 ### 2.4 Settings
 
-Appearance is always dark. Units (km, mi). Export (writes `skyage-flights.json`, share
+Appearance (Dark default, Light optional). Units (km, mi). Export (writes `skyage-flights.json`, share
 sheet). Import (file picker, `.json` or `.csv`, shows "Found 112 flights, 3 already here",
-then Import). Licenses and map attribution.
+then Import). Sections and controls share Liquid Glass. No About section.
 
 ---
 
@@ -184,21 +184,25 @@ radius or size elsewhere. The globe texture and materials use the same color val
 | foreground | #FAFAFA | text, primary button |
 | muted | #1C1C20 | pressed rows, skeletons |
 | mutedForeground | #A1A1AA | secondary text, labels |
-| border | #303742 | hairlines, country borders |
+| border | #303742 | UI hairlines |
+| countryBorder | #303742 | country outlines; #71717A in light mode |
+| glassHighlight | #FFFFFF | curved specular highlights |
 | land | #161C24 | globe land |
 | ring | #71717A | focus |
 | flight | #9BD8FF | flight paths, airport dots |
 | surface | #111113 | inputs, secondary controls, glass tint |
 
-The app is locked to the dark zinc palette; light palette values are not exposed as
-an appearance option. UI controls stay neutral, with white primary buttons and black
-text. The `flight` token is light blue (#9BD8FF) for globe routes and airport dots.
-Inputs and secondary controls use the dark `surface` token (#111113).
+The app defaults to dark zinc but exposes a saved light appearance. Controls stay neutral;
+primary buttons invert the foreground/background pair for contrast. Flight paths are light blue
+in dark mode and darker blue in light mode. Light land and gray country borders are distinct.
 
-Glass recipe: dark translucent surface, native blur intensity 48, 1 px white edge at
-12%, top highlight at 30%, inner highlight at 12%, black shadow. Fallback without native
-blur support or with reduced transparency: 98% dark surface, no blur. The shared globe
-blur target is available to the bottom drawer, filters, settings button and Add modal.
+Glass recipe: native Apple Liquid Glass on supported iOS 26+ builds, guarded by both
+availability checks and Reduce Transparency. Android panels and older iOS use native blur, a tinted
+wash and one curved gradient outline matching the real corners. Small Android controls omit
+RenderEffect to avoid rectangular corner leaks while preserving the same tinted/specular material. No straight top-border overlay.
+The native Android window color must match the current theme before blur mounts, otherwise its
+frame-clear drawable creates a stale white slab. Settings owns a local blur target; the drawer
+and Add modal sample the globe target. Reduced transparency uses an opaque readable surface.
 
 ### Type
 
@@ -217,18 +221,18 @@ No uppercase tracked labels anywhere. Supports font scale 1.3.
 
 ### Shape
 
-Two systems with one rule. Glass surfaces are capsules (chips, buttons on the globe) or
-28 at the sheet's top corners. Everything inside the sheet is shadcn: radius 12 for
-inputs, option rows and buttons. No other radius exists.
+Text buttons and chips are glass capsules; icon-only buttons are 44-point circles.
+Sheets and Settings sections use radius 28; inputs and option rows use radius 12.
+Controls keep at least a 44-point touch target and accessible labels, selected and disabled states.
 
 ### Elevation
 
-Inside the sheet: none, hairlines only. The glass surfaces carry the one shadow from the
-recipe. No card inside the sheet, ever.
+Flight rows stay flat with hairline separators beneath one glass sheet. Interactive
+controls share the glass material and a soft ambient shadow, not separate opaque cards.
 
 ### Components
 
-Seven, in `src/ui/`: Glass (one wrapper around BlurView with the recipe and fallback),
+Seven, in `src/ui/`: Glass (native Liquid Glass or the frosted recipe and fallback),
 Button (primary, secondary, ghost), Chip, Field, FlightRow, OptionRow, EmptyState.
 The sheet is `@gorhom/bottom-sheet` with a Glass background component. Icons from
 `phosphor-react-native`, regular weight.
@@ -254,8 +258,11 @@ user's unit. No exclamation marks.
 
 Lookup: skeleton row while fetching, inline error with Retry. Scan: one-line hint while
 searching. Import: count before commit. Globe: renders from the local array, no loading
-state; bundled geography renders offline even on first launch. A GL initialization or
-rendering failure shows an inline message while leaving the flight list usable.
+state; bundled geography renders offline even on first launch. A bundled native-image globe
+preview remains visible until the first successful GL frame and during surface recovery.
+GL loops stop on navigation blur/backgrounding; focus/resume creates a fresh surface.
+Context/init/render failures retry up to three times, then offer manual retry. The preview
+has no routes or 3D gestures while GL is unavailable; the flight list stays usable.
 
 ---
 
@@ -266,7 +273,7 @@ rendering failure shows an inline message while leaving the flight list usable.
 | App | Expo SDK (latest stable), TypeScript, Expo Router | ships with the template |
 | Globe | Three.js + expo-gl, bundled Natural Earth mask | custom globe, no map account or tokens; works with matching Expo Go |
 | Sheet | @gorhom/bottom-sheet | snap points and gestures done right |
-| Glass | expo-blur | blur where the platform samples it, fallback otherwise |
+| Glass | expo-glass-effect, expo-blur, react-native-svg | native iOS Liquid Glass, frosted Android/older-iOS approximation, curved edge |
 | Scan | expo-camera, live and `scanFromURLAsync` | PDF417, Aztec, QR on Android via ML Kit |
 | Gallery | expo-image-picker | |
 | Storage | expo-sqlite/kv-store | bundled, sync, one key |
@@ -276,13 +283,13 @@ rendering failure shows an inline message while leaving the flight list usable.
 | Icons | phosphor-react-native | |
 | Dates | `Intl` | no date library |
 | Geo | `geo.ts`, haversine and great-circle points, 25 lines | no turf |
-| Tests | Jest, expo preset | |
+| Tests | Jest, Expo Babel preset, react-test-renderer | domain, lifecycle, failure recovery and control/material tests |
 
 Not used: NativeWind and React Native Reusables (swap in if Tailwind classes are wanted),
 Mapbox, MapLibre, Skia, react-query, zustand, any backend.
 
-The globe needs OpenGL ES 3 support. There is no flat-map fallback; if rendering fails,
-the local flight list remains usable. Rebuild existing native apps after the SDK swap.
+The interactive globe needs OpenGL ES 3 support. A bundled sphere preview, not a flat map,
+remains visible if GL cannot render, while the local flight list remains usable. Rebuild existing native apps after the SDK swap.
 
 Android: minSdk 26, edge to edge, predictive back. Measure GL rendering and glass blur
 on real hardware; use the glass fallback if GL surfaces cannot be sampled or blur is slow.
@@ -303,7 +310,7 @@ src/
                        bcbp.ts geo.ts csv.ts stats.ts flightNumber.ts arcs.ts
   api/aerodatabox.ts   one fetch
   store.ts             load, save, add, remove
-  map/                 GlobeView.tsx scene.ts geometry.ts earth-mask.json
+  map/                 GlobeView.tsx renderer.ts GlobePreview.tsx scene.ts geometry.ts earth-mask.json
   ui/                  tokens.ts and the seven components
   data/airports.json
 ```
@@ -339,9 +346,9 @@ route framing, and geography-mask integrity.
 - [ ] glass has its solid fallback and is labeled an approximation in code
 - [ ] the sphere fits the viewport above the sheet peek
 - [ ] idle rotation stops on first touch and never runs under reduce motion
-- [ ] Natural Earth credit in Settings, no map tokens or tile requests
+- [ ] Natural Earth credit in README, no map tokens or tile requests
 - [ ] lookup and import have loading and error states
-- [ ] dark appearance remains active with saved light/system preferences
+- [ ] dark is the default; saved light preferences apply to the globe and native window
 - [ ] camera permission asked on Scan tap, with one line of reason
 - [ ] export then import round-trips with zero duplicates
 

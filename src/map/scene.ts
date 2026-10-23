@@ -7,7 +7,6 @@ import mask from './earth-mask.json';
 import { globePoint, routePoints, routeView } from './geometry';
 
 export type GlobeData = ReturnType<typeof toGeoJSON>;
-export type CityLabel = { id: string; name: string; x: number; y: number };
 
 function disposeObjects(group: THREE.Object3D) {
   const geometries = new Set<THREE.BufferGeometry>();
@@ -25,7 +24,7 @@ function disposeObjects(group: THREE.Object3D) {
 
 // shortcut: coarse 1:110m geography; increase the mask resolution when close-zoom detail matters.
 function earthTexture(c: Colors) {
-  const colors = [c.background, c.land, c.border].map((hex) => new THREE.Color(hex).getHex(THREE.SRGBColorSpace));
+  const colors = [c.background, c.land, c.countryBorder].map((hex) => new THREE.Color(hex).getHex(THREE.SRGBColorSpace));
   const pixels = new Uint8Array(mask.width * mask.height * 4);
   let offset = 0;
   for (let i = 0; i < mask.runs.length; i += 2) {
@@ -54,6 +53,7 @@ export function createGlobeScene(gl: ExpoWebGLRenderingContext, initialCenter: L
   } as unknown as HTMLCanvasElement;
   if (!gl.canvas) Object.defineProperty(gl, 'canvas', { value: canvas, configurable: true });
   const renderer = new THREE.WebGLRenderer({ canvas, context: gl, antialias: true });
+  renderer.debug.onShaderError = () => { throw new Error('Globe shaders could not compile for this surface.'); };
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 100);
   const globe = new THREE.Mesh(new THREE.SphereGeometry(1, 96, 64).rotateY(-Math.PI / 2), new THREE.MeshBasicMaterial());
@@ -67,7 +67,6 @@ export function createGlobeScene(gl: ExpoWebGLRenderingContext, initialCenter: L
   let view = { lon: initialCenter[0], lat: initialCenter[1], distance: 3.4 };
   let target = { ...view };
   let width = 1, height = 1;
-  let labels: { id: string; name: string; point: THREE.Vector3 }[] = [];
   let disposed = false;
   let autoFit = true;
   let bufferWidth = 0, bufferHeight = 0;
@@ -109,7 +108,6 @@ export function createGlobeScene(gl: ExpoWebGLRenderingContext, initialCenter: L
     }
     const dotGeometry = new THREE.SphereGeometry(1, 10, 8);
     const dotMaterial = new THREE.MeshBasicMaterial({ color: c.flight });
-    labels = [];
     for (const feature of data.cities.features) {
       const point = globePoint((feature.geometry as GeoJSON.Point).coordinates as LngLat, 1.009);
       const dot = new THREE.Mesh(dotGeometry, dotMaterial);
@@ -117,7 +115,6 @@ export function createGlobeScene(gl: ExpoWebGLRenderingContext, initialCenter: L
       dot.scale.setScalar(Math.min(0.018, 0.007 + Number(feature.properties?.visits) * 0.0006));
       dot.userData = { iata: String(feature.properties?.iata) };
       cities.add(dot);
-      labels.push({ id: dot.userData.iata, name: String(feature.properties?.city), point });
     }
     if (!cities.children.length) { dotGeometry.dispose(); dotMaterial.dispose(); }
   }
@@ -177,19 +174,6 @@ export function createGlobeScene(gl: ExpoWebGLRenderingContext, initialCenter: L
       if (dots[0]) return dots[0].object.userData;
       const lines = ray.intersectObjects(routes.children).filter((hit) => hit.distance <= surface + 0.025);
       return lines[0]?.object.userData ?? {};
-    },
-    labels(): CityLabel[] {
-      if (view.distance > 2.8) return [];
-      const result: CityLabel[] = [];
-      for (const label of labels) {
-        if (label.point.dot(camera.position) <= 1.02) continue;
-        const p = label.point.clone().project(camera);
-        const x = (p.x + 1) * width / 2, y = (1 - p.y) * height / 2 + 10;
-        if (x < 50 || x > width - 50 || y < 0 || y > height - 24) continue;
-        if (result.some((other) => Math.abs(other.x - x) < 100 && Math.abs(other.y - y) < 28)) continue;
-        result.push({ id: label.id, name: label.name, x, y });
-      }
-      return result;
     },
     dispose() {
       disposed = true;

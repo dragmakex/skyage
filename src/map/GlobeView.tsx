@@ -1,9 +1,13 @@
 import { GLView, type ExpoWebGLRenderingContext } from 'expo-gl';
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, AppState, PanResponder, StyleSheet, View } from 'react-native';
 import type { LngLat } from '../domain/geo';
-import { Txt, useTheme } from '../ui/theme';
-import { createGlobeScene, type CityLabel, type GlobeData } from './scene';
+import { Button } from '../ui/Button';
+import { useTheme } from '../ui/theme';
+import { GlobePreview } from './GlobePreview';
+import { GlobeRenderer } from './renderer';
+import type { GlobeData } from './scene';
 
 export type GlobeHandle = { focus: (a: LngLat, b: LngLat) => void; stopIdle: () => void };
 type Props = {
@@ -14,48 +18,87 @@ type Props = {
   onFlight: (id: string) => void;
   onClear: () => void;
 };
+const isForeground = () => AppState.currentState === null || AppState.currentState === 'active';
 
 export const GlobeView = forwardRef<GlobeHandle, Props>(function GlobeView(props, ref) {
   const { c } = useTheme();
   const current = useRef({ ...props, c });
   current.current = { ...props, c };
-  const scene = useRef<ReturnType<typeof createGlobeScene> | null>(null);
-  const size = useRef({ width: 1, height: 1 });
+  const renderer = useRef<GlobeRenderer | null>(null);
   const touched = useRef(false);
   const reduced = useRef(true);
-  const active = useRef(AppState.currentState === 'active');
-  const mounted = useRef(true);
-  const frame = useRef<number | undefined>(undefined);
   const focus = useRef<[LngLat, LngLat] | undefined>(undefined);
-  const [labels, setLabels] = useState<CityLabel[]>([]);
-  const [error, setError] = useState(false);
+  const active = useRef(false);
+  const focused = useRef(false);
+  const readyRef = useRef(false);
+  const attempts = useRef(0);
+  const generationRef = useRef(0);
+  const retry = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const watchdog = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [generation, setGeneration] = useState(0);
+  const [visible, setVisible] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const sizeRef = useRef(size);
+
+  const stop = useCallback(() => {
+    clearTimeout(retry.current); clearTimeout(watchdog.current);
+    renderer.current?.stop(); renderer.current = null;
+    readyRef.current = false;
+  }, []);
+  const restart = useCallback(() => {
+    stop(); setReady(false);
+    generationRef.current += 1;
+    setGeneration(generationRef.current);
+  }, [stop]);
+  const recover = useCallback((cause: unknown) => {
+    if (!active.current) return;
+    console.warn('Globe surface interrupted; keeping preview visible and recovering', cause);
+    stop(); setReady(false); setRecovering(true);
+    attempts.current += 1;
+    // Avoid a hot retry loop on unsupported hardware; focus/resume or the button retries again.
+    if (attempts.current <= 3) retry.current = setTimeout(restart, 500 * 2 ** (attempts.current - 1));
+  }, [restart, stop]);
+
+  useFocusEffect(useCallback(() => {
+    focused.current = true;
+    active.current = isForeground();
+    attempts.current = 0;
+    restart(); setVisible(active.current);
+    return () => {
+      focused.current = false; active.current = false;
+      stop(); setReady(false); setVisible(false);
+    };
+  }, [restart, stop]));
+
+  useEffect(() => {
+    let cancelled = false;
+    AccessibilityInfo.isReduceMotionEnabled().then((value) => { if (!cancelled) reduced.current = value; }).catch(() => {});
+    const motion = AccessibilityInfo.addEventListener('reduceMotionChanged', (value) => { reduced.current = value; });
+    const app = AppState.addEventListener('change', (value) => {
+      active.current = focused.current && value === 'active';
+      if (active.current) { attempts.current = 0; restart(); }
+      else { stop(); setReady(false); }
+      setVisible(active.current);
+    });
+    return () => { cancelled = true; active.current = false; motion.remove(); app.remove(); stop(); };
+  }, [restart, stop]);
+
+  useEffect(() => {
+    if (!visible) return;
+    watchdog.current = setTimeout(() => { if (!readyRef.current) recover(new Error('Timed out waiting for the globe surface.')); }, 5000);
+    return () => clearTimeout(watchdog.current);
+  }, [visible, generation, recover]);
+  useEffect(() => { renderer.current?.update(props.data, c, props.selectedId); }, [props.data, props.selectedId, c]);
 
   useImperativeHandle(ref, () => ({
     stopIdle() { touched.current = true; },
     focus(a, b) {
-      touched.current = true;
-      focus.current = [a, b];
-      scene.current?.focus(a, b);
+      touched.current = true; focus.current = [a, b];
+      renderer.current?.focus(a, b);
     },
   }), []);
-
-  useEffect(() => {
-    mounted.current = true;
-    let cancelled = false;
-    AccessibilityInfo.isReduceMotionEnabled().then((value) => { if (!cancelled) reduced.current = value; }).catch(() => {});
-    const motion = AccessibilityInfo.addEventListener('reduceMotionChanged', (value) => { reduced.current = value; });
-    const state = AppState.addEventListener('change', (value) => { active.current = value === 'active'; });
-    return () => {
-      cancelled = true;
-      mounted.current = false;
-      motion.remove(); state.remove();
-      if (frame.current !== undefined) cancelAnimationFrame(frame.current);
-      scene.current?.dispose();
-      scene.current = null;
-    };
-  }, []);
-
-  useEffect(() => { scene.current?.update(props.data, c, props.selectedId); }, [props.data, props.selectedId, c]);
 
   const responder = useMemo(() => {
     let lastX = 0, lastY = 0, lastPinch = 0, moved = false;
@@ -63,28 +106,26 @@ export const GlobeView = forwardRef<GlobeHandle, Props>(function GlobeView(props
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: () => {
-        touched.current = true;
-        focus.current = undefined;
+        touched.current = true; focus.current = undefined;
         lastX = 0; lastY = 0; lastPinch = 0; moved = false;
       },
       onPanResponderMove: (event, gesture) => {
         const touches = event.nativeEvent.touches;
         if (touches.length >= 2) {
           const distance = Math.hypot(touches[0].pageX - touches[1].pageX, touches[0].pageY - touches[1].pageY);
-          if (lastPinch > 0 && distance > 0) scene.current?.zoom(distance / lastPinch);
-          lastPinch = distance;
-          moved = true;
+          if (lastPinch > 0 && distance > 0) renderer.current?.zoom(distance / lastPinch);
+          lastPinch = distance; moved = true;
         } else {
-          if (!lastPinch) scene.current?.drag(gesture.dx - lastX, gesture.dy - lastY);
+          if (!lastPinch) renderer.current?.drag(gesture.dx - lastX, gesture.dy - lastY);
           if (Math.hypot(gesture.dx, gesture.dy) > 5) moved = true;
           lastPinch = 0;
         }
         lastX = gesture.dx; lastY = gesture.dy;
       },
       onPanResponderRelease: (event) => {
-        if (moved) return;
+        if (moved || !readyRef.current) return;
         const { locationX, locationY } = event.nativeEvent;
-        const hit = scene.current?.pick(locationX, locationY);
+        const hit = renderer.current?.pick(locationX, locationY);
         if (hit?.iata) current.current.onCity(hit.iata);
         else if (hit?.id) current.current.onFlight(hit.id);
         else current.current.onClear();
@@ -94,60 +135,42 @@ export const GlobeView = forwardRef<GlobeHandle, Props>(function GlobeView(props
   }, []);
 
   function onContextCreate(gl: ExpoWebGLRenderingContext) {
-    if (!mounted.current) return;
-    if (frame.current !== undefined) cancelAnimationFrame(frame.current);
-    scene.current?.dispose();
-    try {
-      const runtime = createGlobeScene(gl, current.current.center);
-      scene.current = runtime;
-      runtime.resize(size.current.width, size.current.height);
-      runtime.update(current.current.data, current.current.c, current.current.selectedId);
-      if (focus.current) runtime.focus(...focus.current);
-      let previous = 0, lastLabels = 0;
-      const draw = (time: number) => {
-        if (!mounted.current) return;
-        const delta = previous ? Math.min((time - previous) / 1000, 0.05) : 0;
-        previous = time;
-        try {
-          if (active.current) {
-            runtime.render(delta, !touched.current && !reduced.current, reduced.current);
-            if (time - lastLabels > 100) {
-              const next = runtime.labels();
-              setLabels((previous) => previous.length === 0 && next.length === 0 ? previous : next);
-              lastLabels = time;
-            }
-          }
-          frame.current = requestAnimationFrame(draw);
-        } catch (cause) {
-          console.warn('Globe rendering failed', cause);
-          setError(true);
-        }
-      };
-      frame.current = requestAnimationFrame(draw);
-    } catch (cause) {
-      console.warn('Globe initialization failed', cause);
-      setError(true);
-    }
+    if (!active.current || generation !== generationRef.current) return;
+    renderer.current?.stop();
+    const next = new GlobeRenderer(
+      () => {
+        if (renderer.current !== next || !active.current) return;
+        clearTimeout(watchdog.current); clearTimeout(retry.current);
+        readyRef.current = true; attempts.current = 0;
+        setReady(true); setRecovering(false);
+      },
+      recover,
+      () => ({ idle: !touched.current && !reduced.current, reduced: reduced.current }),
+    );
+    renderer.current = next;
+    next.resize(sizeRef.current.width, sizeRef.current.height);
+    next.connect(gl, { center: current.current.center, data: current.current.data, colors: current.current.c, selectedId: current.current.selectedId, focus: focus.current });
   }
 
   return (
     <View
       style={StyleSheet.absoluteFill}
       onLayout={({ nativeEvent: { layout } }) => {
-        size.current = layout;
-        scene.current?.resize(layout.width, layout.height);
-        if (focus.current) scene.current?.focus(...focus.current);
+        sizeRef.current = layout; setSize({ width: layout.width, height: layout.height });
+        renderer.current?.resize(layout.width, layout.height);
+        if (focus.current) renderer.current?.focus(...focus.current);
       }}
-      {...responder.panHandlers}
       accessibilityLabel="Flight globe. Drag to rotate, pinch to zoom. Flights are also available in the list below."
     >
-      <GLView style={StyleSheet.absoluteFill} onContextCreate={onContextCreate} />
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-        {labels.map((label) => (
-          <Txt key={label.id} size="caption" muted style={{ position: 'absolute', left: label.x - 60, top: label.y, width: 120, textAlign: 'center' }}>{label.name}</Txt>
-        ))}
+      <View style={StyleSheet.absoluteFill} {...responder.panHandlers}>
+        {visible && size.width > 0 && size.height > 0 && <GLView key={generation} style={StyleSheet.absoluteFill} onContextCreate={onContextCreate} />}
+        {!ready && (
+          <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: c.background }]}>
+            <GlobePreview diameter={Math.min(size.width, size.height) * 0.88} />
+          </View>
+        )}
       </View>
-      {error && <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: c.background }]}><Txt accessibilityRole="alert">The globe could not start. Your flights are still available below.</Txt></View>}
+      {!ready && recovering && <View style={{ position: 'absolute', bottom: 8, alignSelf: 'center' }}><Button title="Retry interactive globe" variant="secondary" pill onPress={() => { attempts.current = 0; restart(); }} /></View>}
     </View>
   );
 });
