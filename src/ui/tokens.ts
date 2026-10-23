@@ -9,9 +9,11 @@ export const palette = {
     mutedForeground: '#71717A',
     border: '#E4E4E7',
     land: '#E4E4E7',
+    countryBorder: '#71717A',
     ring: '#71717A',
     flight: '#0369A1',
     surface: '#FAFAFA',
+    glassHighlight: '#FFFFFF',
   },
   dark: {
     background: '#09090B',
@@ -20,9 +22,11 @@ export const palette = {
     mutedForeground: '#A1A1AA',
     border: '#303742',
     land: '#161C24',
+    countryBorder: '#303742',
     ring: '#71717A',
     flight: '#9BD8FF',
     surface: '#111113',
+    glassHighlight: '#FFFFFF',
   },
 } as const;
 export type Colors = { [K in keyof typeof palette.light]: string };
@@ -49,9 +53,6 @@ export type Role = keyof typeof typeScale;
 
 export const SHEET_SNAP_POINTS = ['20%', '50%', '92%'];
 export const PEEK_FRACTION = 0.2;
-
-// ponytail: flip to false if the map under the glass drops frames on a mid-range device
-export const GLASS_BLUR = true;
 
 export function alpha(hex: string, a: number): string {
   const n = parseInt(hex.slice(1), 16);

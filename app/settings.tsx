@@ -1,21 +1,26 @@
 import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
+import { BlurTargetView } from 'expo-blur';
+import { useRef } from 'react';
 import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { ArrowLeft, DownloadSimple, Export } from 'phosphor-react-native';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { parseImport } from '../src/domain/csv';
 import { addFlights, allFlights, isDuplicate, newId, setSettings, useFlights, useSettings } from '../src/store';
 import { Button } from '../src/ui/Button';
 import { Chip } from '../src/ui/Chip';
 import { Txt, useTheme } from '../src/ui/theme';
+import { BlurTargetContext, Glass } from '../src/ui/Glass';
+import { radius } from '../src/ui/tokens';
 
 export default function Settings() {
   const { c, mode } = useTheme();
   const insets = useSafeAreaInsets();
   const s = useSettings();
   const flights = useFlights();
+  const backdrop = useRef<View>(null);
 
   const exportFlights = async () => {
     const file = new File(Paths.cache, 'skyage-flights.json');
@@ -48,11 +53,11 @@ export default function Settings() {
   };
 
   return (
+    <BlurTargetContext.Provider value={backdrop}>
     <View style={{ flex: 1, backgroundColor: c.background, paddingTop: insets.top }}>
+      <BlurTargetView ref={backdrop} style={[StyleSheet.absoluteFill, { backgroundColor: c.background }]} />
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 56 }}>
-        <Pressable onPress={() => router.back()} style={{ padding: 8 }} accessibilityRole="button" accessibilityLabel="Back">
-          <ArrowLeft size={22} color={c.foreground} />
-        </Pressable>
+        <Button onPress={() => router.back()} variant="ghost" accessibilityLabel="Back" icon={<ArrowLeft size={22} color={c.foreground} />} />
         <Txt size="title" weight="semi" style={{ marginLeft: 4 }}>Settings</Txt>
       </View>
       <ScrollView contentContainerStyle={{ padding: 20, gap: 28, paddingBottom: insets.bottom + 24 }}>
@@ -80,14 +85,15 @@ export default function Settings() {
         </Section>
       </ScrollView>
     </View>
+    </BlurTargetContext.Provider>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={{ gap: 10 }}>
+    <Glass style={{ gap: 12, padding: 16, borderRadius: radius.sheet }}>
       <Txt weight="medium">{title}</Txt>
       {children}
-    </View>
+    </Glass>
   );
 }

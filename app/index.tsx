@@ -1,9 +1,9 @@
-import BottomSheet, { BottomSheetSectionList, BottomSheetView, type BottomSheetBackgroundProps } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetSectionList, BottomSheetScrollView, type BottomSheetBackgroundProps } from '@gorhom/bottom-sheet';
 import { BlurTargetView } from 'expo-blur';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Gear, Plus, Trash, X } from 'phosphor-react-native';
 import { useCallback, useContext, useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Alert, AppState, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AIRPORT_INDEX } from '../src/data/airports';
 import { toGeoJSON } from '../src/domain/arcs';
@@ -36,7 +36,15 @@ export default function Globe() {
   const sheet = useRef<BottomSheet>(null);
   const blurTarget = useContext(BlurTargetContext);
   const [sheetIndex, setSheetIndex] = useState(0);
-  const sheetTop = insets.top + 112;
+  const [sheetSurface, setSheetSurface] = useState(0);
+  useFocusEffect(useCallback(() => {
+    // Native sheets can retain a detached/transparent surface after navigation or resume.
+    const restore = () => setSheetSurface((value) => value + 1);
+    restore();
+    const app = AppState.addEventListener('change', (state) => { if (state === 'active') restore(); });
+    return () => app.remove();
+  }, []));
+  const sheetTop = insets.top + 128;
   const peekHeight = (height - sheetTop) * PEEK_FRACTION;
 
   const years = useMemo(() => [...new Set(flights.map((f) => f.date.slice(0, 4)))].sort().reverse(), [flights]);
@@ -120,8 +128,8 @@ export default function Globe() {
 
   return (
       <View style={{ flex: 1, backgroundColor: c.background }}>
-        <BlurTargetView ref={blurTarget ?? undefined} style={StyleSheet.absoluteFill}>
-          <View style={{ position: 'absolute', top: insets.top + 112, left: 0, right: 0, bottom: peekHeight + 8 }}>
+        <BlurTargetView ref={blurTarget ?? undefined} style={[StyleSheet.absoluteFill, { backgroundColor: c.background }]}>
+          <View style={{ position: 'absolute', top: sheetTop, left: 0, right: 0, bottom: peekHeight + 8 }}>
             <GlobeView ref={globe} data={geo} selectedId={selectedId} center={center} onCity={selectCity} onFlight={selectFlight} onClear={clear} />
           </View>
         </BlurTargetView>
@@ -129,26 +137,23 @@ export default function Globe() {
         <View style={{ position: 'absolute', top: insets.top + 12, left: 20, right: 20, gap: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <Txt size="stat" weight="semi" style={{ letterSpacing: -0.8 }}>Skyage</Txt>
-            <Pressable onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Settings" style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}>
-              <Glass style={{ width: 44, height: 44, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' }}>
-                <Gear size={19} color={c.foreground} />
-              </Glass>
-            </Pressable>
+            <Button accessibilityLabel="Settings" variant="secondary" icon={<Gear size={19} color={c.foreground} />} onPress={() => router.push('/settings')} />
           </View>
-          <Glass style={{ alignSelf: 'flex-start', maxWidth: '100%', height: 40, borderRadius: radius.pill }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4, gap: 4, alignItems: 'center', height: 38 }}>
+          <View style={{ alignSelf: 'flex-start', maxWidth: '100%', height: 52 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, alignItems: 'center', height: 52 }}>
               <Chip label="All flights" selected={year === 'all'} onPress={() => selectYear('all')} />
               {years.map((y) => <Chip key={y} label={y} selected={year === y} onPress={() => selectYear(y)} />)}
             </ScrollView>
-          </Glass>
+          </View>
         </View>
 
         <BottomSheet
+          key={sheetSurface}
           ref={sheet}
-          index={0}
+          index={sheetIndex}
           animateOnMount={false}
           enablePanDownToClose={false}
-          onChange={setSheetIndex}
+          onChange={(index) => { if (index >= 0) setSheetIndex(index); }}
           snapPoints={SHEET_SNAP_POINTS}
           enableDynamicSizing={false}
           topInset={sheetTop}
@@ -168,9 +173,9 @@ export default function Globe() {
           )}
         >
           {selected ? (
-            <BottomSheetView style={{ padding: 20, paddingBottom: insets.bottom + 24, gap: 16 }}>
+            <BottomSheetScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 24, gap: 16 }}>
               <Detail flight={selected} units={units} onClose={clear} onShow={() => { flyToFlight(selected); sheet.current?.snapToIndex(0); }} onDelete={() => confirmDelete(selected)} />
-            </BottomSheetView>
+            </BottomSheetScrollView>
           ) : (
             <BottomSheetSectionList
               sections={sections}
@@ -184,9 +189,7 @@ export default function Globe() {
                       <Txt size="stat" weight="semi">{AIRPORT_INDEX[city]?.city ?? city}</Txt>
                       <Txt size="caption" mono muted>{sections.reduce((n, s) => n + s.data.length, 0)} flights</Txt>
                     </View>
-                    <Pressable onPress={clear} accessibilityRole="button" accessibilityLabel="Close" style={{ padding: 8 }}>
-                      <X size={20} color={c.foreground} />
-                    </Pressable>
+                    <Button onPress={clear} variant="ghost" accessibilityLabel="Close city flights" icon={<X size={20} color={c.foreground} />} />
                   </View>
                 ) : (
                   <View style={{ minHeight: peekHeight - 28, paddingHorizontal: 20, paddingTop: 4, paddingBottom: 20, justifyContent: 'center', gap: 16 }}>
@@ -237,9 +240,7 @@ function Detail({ flight, units, onClose, onShow, onDelete }: { flight: Flight; 
   return (
     <>
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" style={{ padding: 4 }}>
-          <X size={20} color={c.foreground} />
-        </Pressable>
+        <Button onPress={onClose} variant="ghost" accessibilityLabel="Close flight details" icon={<X size={20} color={c.foreground} />} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
         <View style={{ gap: 2 }}>

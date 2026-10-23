@@ -15,7 +15,7 @@ SplashScreen.preventAutoHideAsync();
 function Routes() {
   const { c, mode } = useTheme();
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.background } }}>
         <Stack.Screen name="index" />
@@ -25,7 +25,7 @@ function Routes() {
         />
         <Stack.Screen name="settings" options={{ animation: 'slide_from_right' }} />
       </Stack>
-    </>
+    </View>
   );
 }
 
