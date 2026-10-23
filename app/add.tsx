@@ -4,7 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { CaretLeft, Hash, Image as ImageIcon, MapTrifold, Scan, X } from 'phosphor-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { lookupFlight, type Leg } from '../src/api/aerodatabox';
 import { AIRPORT_INDEX, searchAirports } from '../src/data/airports';
@@ -59,13 +59,9 @@ export default function Add() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.mutedForeground }} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 8 }}>
-            <Pressable onPress={() => setStep('menu')} disabled={step === 'menu'} style={{ padding: 8, opacity: step === 'menu' ? 0 : 1 }} accessibilityLabel="Back">
-              <CaretLeft size={20} color={c.foreground} />
-            </Pressable>
+            {step === 'menu' ? <View style={{ width: 44, height: 44 }} /> : <Button onPress={() => setStep('menu')} variant="ghost" accessibilityLabel="Back" icon={<CaretLeft size={20} color={c.foreground} />} />}
             <Txt size="title" weight="semi" style={{ flex: 1, textAlign: 'center' }}>{TITLES[step]}</Txt>
-            <Pressable onPress={() => router.back()} style={{ padding: 8 }} accessibilityLabel="Close">
-              <X size={20} color={c.foreground} />
-            </Pressable>
+            <Button onPress={() => router.back()} variant="ghost" accessibilityLabel="Close add flight" icon={<X size={20} color={c.foreground} />} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: insets.bottom + 20 }}>
             {step === 'menu' && (
@@ -128,7 +124,7 @@ function ScanStep({ onResult, onManual }: { onResult: (b: Bcbp) => void; onManua
       ) : (
         <View style={{ height: 280, borderRadius: radius.control, backgroundColor: c.muted, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20 }}>
           <Txt muted style={{ textAlign: 'center' }}>Camera permission is needed to scan a pass.</Txt>
-          <Button title="Allow camera" variant="secondary" onPress={request} />
+          <Button title={perm?.canAskAgain === false ? 'Open app settings' : 'Allow camera'} variant="secondary" onPress={perm?.canAskAgain === false ? Linking.openSettings : request} />
         </View>
       )}
       <Txt size="caption" muted>{msg ?? 'Point at the barcode on the boarding pass.'}</Txt>
@@ -183,10 +179,7 @@ function NumberStep({ draft, onDone, onRoute }: { draft: Draft; onDone: (d: Part
         </View>
       ) : null}
       {legs?.map((l, i) => (
-        <Pressable key={i} onPress={() => pick(l)} style={({ pressed }) => ({ padding: 12, borderRadius: radius.control, borderWidth: 1, borderColor: c.border, backgroundColor: pressed ? c.muted : 'transparent', gap: 2 })}>
-          <Txt mono weight="semi">{l.from} to {l.to}</Txt>
-          <Txt size="caption" muted>{AIRPORT_INDEX[l.from]?.city ?? l.from} to {AIRPORT_INDEX[l.to]?.city ?? l.to}</Txt>
-        </Pressable>
+        <OptionRow key={i} onPress={() => pick(l)} icon={<MapTrifold size={20} color={c.foreground} />} title={`${l.from} to ${l.to}`} description={`${AIRPORT_INDEX[l.from]?.city ?? l.from} to ${AIRPORT_INDEX[l.to]?.city ?? l.to}`} />
       ))}
       {!err ? <Button title="Look up" onPress={lookup} disabled={!parsed || busy} /> : null}
     </>
@@ -263,15 +256,19 @@ function AirportField({ label, value, onChange }: { label: string; value: string
       {results.map((a) => (
         <Pressable
           key={a.iata}
+          accessibilityRole="button"
+          accessibilityLabel={`${a.iata}, ${a.city}, ${a.name}`}
           onPress={() => {
             setQ(a.iata);
             onChange(a.iata);
             setOpen(false);
           }}
-          style={({ pressed }) => ({ flexDirection: 'row', gap: 12, alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.control, backgroundColor: pressed ? c.muted : 'transparent' })}
+          style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
         >
-          <Txt mono weight="medium" style={{ width: 44 }}>{a.iata}</Txt>
-          <Txt size="caption" muted numberOfLines={1} style={{ flex: 1 }}>{a.city}, {a.name}</Txt>
+          <Glass interactive tone="clear" style={{ flexDirection: 'row', gap: 12, alignItems: 'center', minHeight: 44, paddingVertical: 8, paddingHorizontal: 12, borderRadius: radius.control }}>
+            <Txt mono weight="medium" style={{ width: 44 }}>{a.iata}</Txt>
+            <Txt size="caption" muted numberOfLines={1} style={{ flex: 1 }}>{a.city}, {a.name}</Txt>
+          </Glass>
         </Pressable>
       ))}
     </View>
@@ -279,7 +276,6 @@ function AirportField({ label, value, onChange }: { label: string; value: string
 }
 
 function DateField({ value, onChange }: { value: string; onChange: (iso: string) => void }) {
-  const { c } = useTheme();
   if (Platform.OS !== 'android') {
     return <Field label="Date" value={value} onChangeText={onChange} placeholder="YYYY-MM-DD" mono />;
   }
@@ -292,9 +288,11 @@ function DateField({ value, onChange }: { value: string; onChange: (iso: string)
   return (
     <View style={{ gap: 6 }}>
       <Txt size="caption" muted>Date</Txt>
-      <Pressable onPress={open} accessibilityRole="button" style={{ height: 44, borderWidth: 1, borderColor: c.border, borderRadius: radius.control, paddingHorizontal: 12, justifyContent: 'center', backgroundColor: c.surface }}>
-        <Txt mono style={{ fontSize: 16 }}>{fmtDate(value)}</Txt>
-      </Pressable>
+      <Glass interactive style={{ borderRadius: radius.control }}>
+        <Pressable onPress={open} accessibilityRole="button" accessibilityLabel="Choose flight date" style={{ minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' }}>
+          <Txt mono style={{ fontSize: 16 }}>{fmtDate(value)}</Txt>
+        </Pressable>
+      </Glass>
     </View>
   );
 }

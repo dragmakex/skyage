@@ -24,6 +24,7 @@ test('light mode text and flight paths remain readable on pale surfaces', () => 
   expect(contrast(c.foreground, c.surface)).toBeGreaterThan(7);
   expect(contrast(c.mutedForeground, c.surface)).toBeGreaterThan(4.5);
   expect(contrast(c.flight, c.land)).toBeGreaterThan(4.5);
+  expect(contrast(c.countryBorder, c.land)).toBeGreaterThan(3);
 });
 
 test('flight menu starts at 20% and can expand to half and nearly full screen', () => {

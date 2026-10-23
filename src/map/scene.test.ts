@@ -9,7 +9,7 @@ import { createGlobeScene } from './scene';
 jest.mock('three', () => ({
   ...jest.requireActual('three'),
   WebGLRenderer: jest.fn().mockImplementation(() => ({
-    setSize: jest.fn(), setClearColor: jest.fn(), dispose: jest.fn(),
+    setSize: jest.fn(), setClearColor: jest.fn(), dispose: jest.fn(), debug: {},
     render: jest.fn((scene: { updateMatrixWorld: () => void }) => scene.updateMatrixWorld()),
   })),
 }));
@@ -44,19 +44,41 @@ test('front cities are pickable, back cities and routes are occluded, empty taps
   expect(gl.endFrameEXP).toHaveBeenCalledTimes(frames);
 });
 
-test('route selection and projected labels work after zoom and data replacement', () => {
+test('route selection works after zoom and data replacement without city labels', () => {
   const { runtime } = setup();
   runtime.update(toGeoJSON([flight('CCC', 'DDD')], index, 'route'), palette.dark, 'route');
   runtime.render(1, false, true);
   expect(runtime.pick(200, 300)).toEqual({ id: 'route' });
-  expect(runtime.labels()).toEqual([]);
+  expect(runtime).not.toHaveProperty('labels');
   runtime.zoom(2.2);
   runtime.render(1, false, true);
-  expect(runtime.labels().map((label) => label.id)).toEqual(expect.arrayContaining(['CCC', 'DDD']));
+  expect(runtime.pick(200, 300)).toEqual({ id: 'route' });
   runtime.update(toGeoJSON([], index), palette.light);
   runtime.render(1, false, true);
   expect(runtime.pick(200, 300)).toEqual({});
-  expect(runtime.labels()).toEqual([]);
+  runtime.dispose();
+});
+
+test('shader failures are recoverable errors rather than a silently blank first frame', () => {
+  const { runtime } = setup();
+  const renderer = (WebGLRenderer as unknown as jest.Mock).mock.results.at(-1)!.value;
+  expect(() => renderer.debug.onShaderError()).toThrow('Globe shaders could not compile');
+  runtime.dispose();
+});
+
+test.each(['light', 'dark'] as const)('%s globe texture has distinct land and country-border pixels', (mode) => {
+  const { runtime } = setup();
+  const renderer = (WebGLRenderer as unknown as jest.Mock).mock.results.at(-1)!.value;
+  runtime.update(toGeoJSON([], index), palette[mode]);
+  runtime.render(1, false, true);
+  const scene: Scene = renderer.render.mock.calls.at(-1)[0];
+  const globe = scene.children.find((o) => o instanceof Mesh && (o.material as MeshBasicMaterial).map) as Mesh;
+  const pixels = (globe.material as MeshBasicMaterial).map!.image.data as Uint8Array;
+  const colors = new Set<number>();
+  for (let i = 0; i < pixels.length; i += 4) colors.add(pixels[i] * 65536 + pixels[i + 1] * 256 + pixels[i + 2]);
+  expect(colors).toContain(parseInt(palette[mode].land.slice(1), 16));
+  expect(colors).toContain(parseInt(palette[mode].countryBorder.slice(1), 16));
+  expect(palette[mode].countryBorder).not.toBe(palette[mode].land);
   runtime.dispose();
 });
 
