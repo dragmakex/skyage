@@ -1,0 +1,37 @@
+# Gradle / Android build output
+.gradle/
+build/
+app/build/
+.kotlin/
+local.properties
+captures/
+.externalNativeBuild/
+.cxx/
+
+# IDE
+.idea/
+*.iml
+*.hprof
+.DS_Store
+
+# Reference material: third-party app builds and everything unpacked from them. Copyrighted
+# binaries — never publish, and large enough that a host would reject them anyway.
+.work/
+*.ipa
+
+# Regenerable dataset downloads (12 MB OurAirports CSV, Wikidata dump).
+# The shipped .dat files in app/src/main/assets are committed; see docs/DATA-SOURCES.md.
+tools/raw/
+
+# Python bytecode (tools/)
+__pycache__/
+*.pyc
+
+# Tool scratch (pi browser artifacts)
+.pi/
+
+# Signing material — never commit
+*.jks
+*.keystore
+keystore.properties
+signing.properties

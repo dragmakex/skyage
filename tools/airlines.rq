@@ -1,0 +1,13 @@
+# Airlines that publish both designators, so an IATA flight number can be turned into a callsign.
+# Sitelink count is shipped so a brand sharing its parent's codes (Ted vs United) loses the tie.
+# Some airlines (Korean Air) carry no `en` label at all, so the language list falls back to other
+# latin-script labels instead of surfacing a bare Q-id.
+SELECT ?item ?itemLabel ?iata ?icao ?sitelinks WHERE {
+  ?item wdt:P31/wdt:P279* wd:Q46970 .
+  ?item wdt:P229 ?iata .
+  OPTIONAL { ?item wdt:P230 ?icao . }
+  OPTIONAL { ?item wikibase:sitelinks ?sitelinks . }
+  SERVICE wikibase:label {
+    bd:serviceParam wikibase:language "en,mul,es,pl,de,fr,it,pt,nl,sv,da,no,fi,cs,tr,id,ms,vi,hr,ro,ca".
+  }
+}
