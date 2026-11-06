@@ -215,11 +215,11 @@ fun FlightDetailScreen(
             if (view.phase == FlightPhase.NO_DATA) {
                 SurfaceCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = view.lastSeenAt?.let {
-                            "Last picked up by a ground receiver at ${utcTime(it)}. It may have " +
-                                "landed, or flown somewhere with no receiver coverage."
-                        } ?: "Not picked up yet. It may not have left, or it is out of receiver " +
-                            "coverage.",
+                        text = noSignalCopy(
+                            time = view.lastSeenAt?.let { utcTime(it) },
+                            remainingKm = view.remainingKm,
+                            destCode = view.dest?.code,
+                        ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Sky.SecondaryLabel,
                     )
@@ -229,6 +229,22 @@ fun FlightDetailScreen(
             Spacer(Modifier.height(32.dp))
         }
     }
+}
+
+/**
+ * What "no signal" actually means, in the three cases the app can tell apart: never seen, seen
+ * but gone from the feed without knowing where, and seen a known distance short of the airport.
+ */
+internal fun noSignalCopy(time: String?, remainingKm: Double?, destCode: String?): String = when {
+    time != null && destCode != null && remainingKm != null -> {
+        val distance = "%,d".format(remainingKm.toInt())
+        "Last heard at $time, $distance km from $destCode. Nothing since: it may have landed " +
+            "elsewhere, or flown out of receiver coverage."
+    }
+    time != null ->
+        "Last heard at $time, and nothing since. It may have landed, or flown out of receiver " +
+            "coverage."
+    else -> "Not picked up yet. It may not have left, or it is out of receiver coverage."
 }
 
 /** Ground receivers report in UTC; the phone shows local time, so say which. */
