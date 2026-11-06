@@ -199,9 +199,11 @@ fun FlightDetailScreen(
             if (view.phase == FlightPhase.NO_DATA) {
                 SurfaceCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "No aircraft is currently broadcasting this callsign. The flight may " +
-                            "not have departed, may have already landed, or may be outside " +
-                            "ground-receiver coverage.",
+                        text = view.lastSeenAt?.let {
+                            "Last picked up by a ground receiver at ${utcTime(it)}. It may have " +
+                                "landed, or flown somewhere with no receiver coverage."
+                        } ?: "Not picked up yet. It may not have left, or it is out of receiver " +
+                            "coverage.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Sky.SecondaryLabel,
                     )
@@ -213,9 +215,9 @@ fun FlightDetailScreen(
     }
 }
 
+/** Ground receivers report in UTC; the phone shows local time, so say which. */
 private fun utcTime(epochSeconds: Long): String {
-    if (epochSeconds <= 0L) return "unknown"
-    val fmt = SimpleDateFormat("HH:mm:ss'Z'", Locale.US)
+    val fmt = SimpleDateFormat("HH:mm'Z'", Locale.US)
     fmt.timeZone = TimeZone.getTimeZone("UTC")
     return fmt.format(Date(epochSeconds * 1000))
 }

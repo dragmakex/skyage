@@ -66,6 +66,8 @@ data class FlightView(
     val origin: Airport?,
     val dest: Airport?,
     val phase: FlightPhase,
+    /** Epoch seconds of the last time this callsign was in the feed, null if never seen. */
+    val lastSeenAt: Long? = null,
     /** 0..1 along the great circle origin->dest, null when it cannot be computed. */
     val progress: Double?,
     /** Great-circle distance origin->dest in km, null without both airports. */

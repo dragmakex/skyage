@@ -47,6 +47,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private var lastLive: Map<String, LiveState> = emptyMap()
+    // Kept across polls: a callsign that drops out still tells us when it was last heard.
+    private val lastSeen = mutableMapOf<String, Long>()
     private var tracked: List<TrackedFlight> = emptyList()
     private var searchJob: Job? = null
 
@@ -70,6 +72,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val states = liveClient.snapshot(force = force)
                 lastLive = states.associateBy { it.callsign.uppercase().trim() }
+                states.forEach { lastSeen[it.callsign.uppercase().trim()] = it.lastContact }
                 _state.update {
                     it.copy(
                         refreshing = false,
@@ -151,7 +154,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         .map { f ->
             val origin = bundled.airportByCode(f.originIata)
             val dest = bundled.airportByCode(f.destIata)
-            val live = lastLive[f.callsign.uppercase().trim()]
+            val key = f.callsign.uppercase().trim()
+            val live = lastLive[key]
             val routeKm = if (origin != null && dest != null) {
                 distanceKm(origin.lat, origin.lon, dest.lat, dest.lon)
             } else null
@@ -180,6 +184,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 origin = origin,
                 dest = dest,
                 phase = phase,
+                lastSeenAt = if (live == null) lastSeen[key] else null,
                 progress = progress,
                 routeKm = routeKm,
                 remainingKm = if (routeKm != null && progress != null) routeKm * (1 - progress) else null,
