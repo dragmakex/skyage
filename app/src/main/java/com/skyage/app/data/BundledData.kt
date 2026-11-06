@@ -99,12 +99,7 @@ class BundledData(private val assets: AssetManager) {
     }
 
     fun parseFlightNumber(raw: String): ParsedFlightNumber? {
-        val compact = raw.trim().uppercase().replace(" ", "").replace("-", "")
-        if (compact.isEmpty()) return null
-        val letters = compact.takeWhile { it.isLetter() }
-        val digits = compact.substring(letters.length).takeWhile { it.isDigit() }
-        if (letters.isEmpty() || digits.isEmpty()) return null
-        if (letters.length > 3 || digits.length > 4) return null
+        val (letters, digits) = splitFlightNumber(raw) ?: return null
         val airline = airlineByIata(letters) ?: return null
         val icao = airline.icao?.takeIf { it.isNotBlank() } ?: return null
         return ParsedFlightNumber(
