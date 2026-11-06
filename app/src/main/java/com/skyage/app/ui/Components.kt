@@ -41,7 +41,7 @@ fun PhaseBadge(phase: FlightPhase) {
     val (label, color) = when (phase) {
         FlightPhase.AIRBORNE -> "IN AIR" to Sky.OnTime
         FlightPhase.ON_GROUND -> "ON GROUND" to Sky.Warn
-        FlightPhase.NO_DATA -> "NO LIVE DATA" to Sky.TertiaryLabel
+        FlightPhase.NO_DATA -> "NO SIGNAL" to Sky.TertiaryLabel
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -60,10 +60,8 @@ fun PhaseBadge(phase: FlightPhase) {
     }
 }
 
-/**
- * Airport-to-airport header. Codes use the dataset's IATA where available.
- * [compact] trims it for list rows.
- */
+/** Airport-to-airport header. Codes use the dataset's IATA where available.
+ * [compact] trims it for list rows. Renders nothing when neither end is known. */
 @Composable
 fun RouteHeader(
     origin: Airport?,
@@ -72,8 +70,9 @@ fun RouteHeader(
     destCode: String?,
     compact: Boolean = false,
 ) {
-    val left = origin?.code ?: originCode ?: "—"
-    val right = dest?.code ?: destCode ?: "—"
+    val left = origin?.code ?: originCode
+    val right = dest?.code ?: destCode
+    if (left == null && right == null) return
     val style = if (compact) {
         MaterialTheme.typography.titleLarge
     } else {
@@ -83,14 +82,14 @@ fun RouteHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(left, style = style, color = Sky.Label, fontWeight = FontWeight.Bold)
+        left?.let { Text(it, style = style, color = Sky.Label, fontWeight = FontWeight.Bold) }
         Box(
             Modifier
                 .weight(1f)
                 .height(1.dp)
                 .background(Sky.TileBorder)
         )
-        Text(right, style = style, color = Sky.Label, fontWeight = FontWeight.Bold)
+        right?.let { Text(it, style = style, color = Sky.Label, fontWeight = FontWeight.Bold) }
     }
 }
 

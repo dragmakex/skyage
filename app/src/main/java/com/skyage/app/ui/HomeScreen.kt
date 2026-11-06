@@ -27,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -142,22 +141,18 @@ private fun StatusPill(state: UiState, onRefresh: () -> Unit, modifier: Modifier
             )
             Text(
                 text = state.lastUpdate?.let {
-                    "Updated ${SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(it))}"
-                } ?: if (state.refreshing) "Contacting OpenSky…" else "Not yet updated",
+                    "Updated ${SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it))}"
+                } ?: if (state.refreshing) "Updating…" else "Live traffic",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Sky.SecondaryLabel,
             )
         }
-        if (state.refreshing) {
-            CircularProgressIndicator(
-                modifier = Modifier.padding(12.dp).size(20.dp),
-                strokeWidth = 2.dp,
-                color = Sky.Pro,
+        IconButton(onClick = onRefresh) {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = "Refresh",
+                tint = if (state.refreshing) Sky.TertiaryLabel else Sky.SecondaryLabel,
             )
-        } else {
-            IconButton(onClick = onRefresh) {
-                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Sky.Label)
-            }
         }
     }
 }
@@ -191,16 +186,15 @@ private fun FlightsSheet(state: UiState, onAdd: () -> Unit, onOpen: (String) -> 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Flights", style = MaterialTheme.typography.headlineMedium, color = Sky.Label)
-                Text(
-                    text = when {
-                        !state.ready -> "Loading the bundled dataset…"
-                        state.views.isEmpty() -> "Nothing followed yet"
-                        else -> "${state.views.size} followed"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Sky.SecondaryLabel,
-                )
+                Text("Flights", style = MaterialTheme.typography.displaySmall, color = Sky.Label)
+                if (state.views.isNotEmpty()) {
+                    Text(
+                        text = "${state.views.size} tracked",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Sky.SecondaryLabel,
+                        modifier = Modifier.padding(top = 2.dp),
+                    )
+                }
             }
             GlassIconButton(
                 icon = Icons.Default.Add,
@@ -215,41 +209,25 @@ private fun FlightsSheet(state: UiState, onAdd: () -> Unit, onOpen: (String) -> 
         state.message?.let { msg -> Banner(msg, Modifier.padding(bottom = 12.dp)) }
 
         when {
-            !state.ready -> Box(
-                Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center,
-            ) { CircularProgressIndicator(color = Sky.Pro) }
+            !state.ready -> Spacer(Modifier.fillMaxWidth().weight(1f))
 
             state.views.isEmpty() -> CenteredMessage(
                 title = "No flights yet",
-                body = "Tap + and enter a flight number like UA123. Airport and airline details " +
-                    "come from the bundled dataset; live positions come from the OpenSky Network.",
+                body = "Tap + and enter a flight number like UA123.",
                 modifier = Modifier.weight(1f),
             )
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 contentPadding = PaddingValues(bottom = navBar + 24.dp),
             ) {
                 items(state.views, key = { it.flight.key }) { view ->
                     FlightCard(view, onClick = { onOpen(view.flight.key) })
                 }
-                item { DataCredit() }
             }
         }
     }
-}
-
-/** Attribution the data sources ask for; positions are ADS-B radio observations, not official. */
-@Composable
-private fun DataCredit() {
-    Text(
-        text = "Live positions: the OpenSky Network · Airports: OurAirports · Airlines: Wikidata",
-        style = MaterialTheme.typography.labelSmall,
-        color = Sky.TertiaryLabel,
-        modifier = Modifier.fillMaxWidth().padding(top = 2.dp, start = 4.dp, end = 4.dp),
-    )
 }
 
 @Composable
@@ -291,23 +269,24 @@ private fun FlightCard(view: FlightView, onClick: () -> Unit) {
             Spacer(Modifier.height(8.dp))
 
             Text(
-                text = buildString {
-                    append(view.flight.airlineName)
-                    view.origin?.city?.let { append(" · $it") }
-                    view.dest?.city?.let { append(" → $it") }
-                },
+                text = listOfNotNull(view.flight.airlineName, view.origin?.city, view.dest?.city)
+                    .joinToString(" · "),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Sky.SecondaryLabel,
             )
 
-            Spacer(Modifier.height(12.dp))
-            ProgressRail(view.progress)
-            Spacer(Modifier.height(8.dp))
+            if (view.progress != null) {
+                Spacer(Modifier.height(12.dp))
+                ProgressRail(view.progress)
+                Spacer(Modifier.height(8.dp))
+            } else {
+                Spacer(Modifier.height(10.dp))
+            }
 
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = when {
-                        view.progress != null -> "${(view.progress * 100).toInt()}% complete"
+                        view.progress != null -> "${(view.progress * 100).toInt()}%"
                         isOffRoute(view) -> "Aircraft off route"
                         else -> routeSummary(view)
                     },

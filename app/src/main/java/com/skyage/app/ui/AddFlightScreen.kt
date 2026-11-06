@@ -88,12 +88,13 @@ fun AddFlightScreen(
                 }
                 Text(
                     text = when {
-                        numberText.isBlank() -> "Airline code plus flight number, e.g. BA286."
-                        parsed != null -> "${parsed.airline.name} · live callsign ${parsed.callsign}"
-                        else -> "No airline with that code in the bundled dataset."
+                        numberText.isBlank() -> "Airline code and number, e.g. BA286."
+                        parsed != null -> parsed.airline.name
+                        else -> "No airline uses that code."
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (parsed != null) Sky.OnTime else Sky.SecondaryLabel,
+                    color = if (numberText.isNotBlank() && parsed == null) Sky.Alert
+                    else Sky.SecondaryLabel,
                 )
             }
 
@@ -122,7 +123,7 @@ fun AddFlightScreen(
 
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Optional — used for route progress and the map.",
+                text = "Optional",
                 style = MaterialTheme.typography.labelLarge,
                 color = Sky.TertiaryLabel,
             )
@@ -180,15 +181,21 @@ private fun AirportSlot(
                 style = MaterialTheme.typography.labelSmall,
                 color = Sky.TertiaryLabel,
             )
-            Text(
-                text = airport?.code ?: "—",
-                style = MaterialTheme.typography.headlineMedium,
-                color = Sky.Label,
-            )
+            if (airport != null) {
+                Text(
+                    text = airport.code,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Sky.Label,
+                )
+            }
             Text(
                 text = airport?.city ?: "Select",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Sky.SecondaryLabel,
+                style = if (airport == null) {
+                    MaterialTheme.typography.headlineMedium
+                } else {
+                    MaterialTheme.typography.bodyMedium
+                },
+                color = if (airport == null) Sky.TertiaryLabel else Sky.SecondaryLabel,
             )
         }
     }

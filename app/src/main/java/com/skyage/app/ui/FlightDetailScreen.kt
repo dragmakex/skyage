@@ -14,10 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -107,23 +103,37 @@ fun FlightDetailScreen(
                 destCode = view.flight.destIata,
             )
 
-            Text(
-                text = listOfNotNull(view.origin?.city, view.dest?.city).joinToString("  →  "),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Sky.SecondaryLabel,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            val cities = listOfNotNull(view.origin?.city, view.dest?.city).joinToString("  →  ")
+            if (cities.isNotEmpty()) {
+                Text(
+                    text = cities,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Sky.SecondaryLabel,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
 
             Spacer(Modifier.height(16.dp))
-            ProgressRail(view.progress)
-            Spacer(Modifier.height(8.dp))
+            if (view.progress != null) {
+                ProgressRail(view.progress)
+                Spacer(Modifier.height(12.dp))
+            }
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = view.progress?.let { "${(it * 100).toInt()}% complete" } ?: "Progress unavailable",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Sky.Pro,
-                )
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = if (view.progress == null) {
+                    Arrangement.End
+                } else {
+                    Arrangement.SpaceBetween
+                },
+            ) {
+                view.progress?.let {
+                    Text(
+                        text = "${(it * 100).toInt()}%",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = Sky.Pro,
+                    )
+                }
                 Text(
                     text = view.remainingKm?.let { "%,d km to go".format(it.toInt()) } ?: routeSummary(view),
                     style = MaterialTheme.typography.labelLarge,
@@ -133,64 +143,41 @@ fun FlightDetailScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    Row(Modifier.fillMaxWidth()) {
-                        StatCell(
-                            label = "Altitude",
-                            value = view.live?.baroAltitudeM?.let { "%,d ft".format((it * 3.28084).toInt()) } ?: "—",
-                            modifier = Modifier.weight(1f),
-                        )
-                        StatCell(
-                            label = "Ground speed",
-                            value = view.live?.velocityMs?.let { "%,d km/h".format((it * 3.6).toInt()) } ?: "—",
-                            modifier = Modifier.weight(1f),
-                        )
+            if (view.live != null) {
+                SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+                    Column {
+                        Row(Modifier.fillMaxWidth()) {
+                            StatCell(
+                                label = "Altitude",
+                                value = view.live.baroAltitudeM?.let {
+                                    "%,d ft".format((it * 3.28084).toInt())
+                                } ?: "—",
+                                modifier = Modifier.weight(1f),
+                            )
+                            StatCell(
+                                label = "Ground speed",
+                                value = view.live.velocityMs?.let {
+                                    "%,d km/h".format((it * 3.6).toInt())
+                                } ?: "—",
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        Row(Modifier.fillMaxWidth()) {
+                            StatCell(
+                                label = "Heading",
+                                value = view.live.headingDeg?.let { "%03d°".format(it.toInt()) } ?: "—",
+                                modifier = Modifier.weight(1f),
+                            )
+                            StatCell(
+                                label = "Vertical rate",
+                                value = view.live.verticalRateMs?.let {
+                                    "%+,.0f ft/min".format(it * 196.85)
+                                } ?: "—",
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(16.dp))
-                    Row(Modifier.fillMaxWidth()) {
-                        StatCell(
-                            label = "Heading",
-                            value = view.live?.headingDeg?.let { "%03d°".format(it.toInt()) } ?: "—",
-                            modifier = Modifier.weight(1f),
-                        )
-                        StatCell(
-                            label = "Vertical rate",
-                            value = view.live?.verticalRateMs?.let {
-                                val fpm = it * 196.85
-                                "%+,.0f ft/min".format(fpm)
-                            } ?: "—",
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
-
-            SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-                Column {
-                    StatCell(
-                        label = "Position",
-                        value = if (view.live?.lat != null && view.live.lon != null) {
-                            "%.3f, %.3f".format(view.live.lat, view.live.lon)
-                        } else "Not reported",
-                        sub = null,
-                    )
-                    Spacer(Modifier.height(14.dp))
-                    StatCell(
-                        label = "Transponder",
-                        value = view.live?.icao24?.uppercase() ?: "—",
-                        sub = view.live?.let {
-                            "${it.originCountry} · last seen ${utcTime(it.lastContact)}"
-                        },
-                    )
-                    Spacer(Modifier.height(14.dp))
-                    StatCell(
-                        label = "Callsign queried",
-                        value = view.flight.callsign,
-                        sub = "OpenSky callsign lookup from the bundled IATA→ICAO airline map",
-                    )
                 }
             }
 
@@ -199,11 +186,9 @@ fun FlightDetailScreen(
             if (isOffRoute(view)) {
                 SurfaceCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "The aircraft broadcasting this callsign is %,d km off the "
+                        text = "The aircraft showing as %,d km off this route is most likely "
                             .format(view.offRouteKm?.toInt() ?: 0) +
-                            "${view.origin?.code ?: "origin"}–${view.dest?.code ?: "destination"} " +
-                            "route, so it is most likely a different flight using the same " +
-                            "callsign. Positions and progress are not attributed to this route.",
+                            "another flight with the same number.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Sky.Warn,
                     )
