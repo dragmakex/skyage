@@ -70,7 +70,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _state.update { it.copy(refreshing = true) }
             try {
-                val states = liveClient.snapshot(force = force)
+                val states = try {
+                    liveClient.snapshot(force = force)
+                } catch (first: Exception) {
+                    // A DNS answer that fails during a VPN or Wi-Fi/LTE handoff is cached as
+                    // negative for a second or two; one retry almost always clears it.
+                    android.util.Log.w("Skyage", "live refresh failed, retrying", first)
+                    delay(2_000)
+                    liveClient.snapshot(force = true)
+                }
                 lastLive = states.associateBy { it.callsign.uppercase().trim() }
                 states.forEach { lastSeen[it.callsign.uppercase().trim()] = it.lastContact }
                 _state.update {
@@ -82,10 +90,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             } catch (e: Exception) {
+                android.util.Log.w("Skyage", "live refresh failed twice", e)
                 _state.update {
                     it.copy(
                         refreshing = false,
-                        message = e.message ?: "Could not reach the live feed.",
+                        message = when (e) {
+                            is java.net.UnknownHostException,
+                            is java.net.SocketTimeoutException,
+                            is java.net.ConnectException,
+                            -> "Can't reach the live feed. Check your connection."
+                            else -> e.message ?: "Live positions are unavailable right now."
+                        },
                         views = buildViews(),
                     )
                 }
