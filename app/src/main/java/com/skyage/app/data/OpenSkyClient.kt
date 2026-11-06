@@ -15,14 +15,20 @@ import java.net.URL
  * API has no callsign filter, the caller looks flights up inside the cached snapshot.
  *
  * shortcut: one global snapshot per [CACHE_MS] instead of a per-flight subscription. Anonymous
- * access is 400 credits/day and one `states/all` costs 4, so 60 s polling is about 100 calls a
- * day; stream from a paid feed before this app needs always-on tracking.
+ * access is 400 credits/day and one `states/all` costs 4 — a hundred calls a day — so the poll
+ * rate follows [pollIntervalMs] and slows down as the budget runs out. Stream from a paid feed
+ * before this app needs always-on tracking.
  */
 class OpenSkyClient {
 
     private data class Cache(val at: Long, val states: List<LiveState>)
 
     @Volatile private var cache: Cache? = null
+
+    /** Credits left today, as reported by the last response; null until the first one. */
+    @Volatile private var remaining: Int? = null
+
+    fun pollIntervalMs(): Long = pollIntervalMs(remaining)
 
     suspend fun snapshot(force: Boolean = false): List<LiveState> = withContext(Dispatchers.IO) {
         val cached = cache
@@ -44,8 +50,13 @@ class OpenSkyClient {
             setRequestProperty("User-Agent", "Skyage/0.1 (Android)")
         }
         try {
+            conn.getHeaderField("X-Rate-Limit-Remaining")?.toIntOrNull()?.let { remaining = it }
             val code = conn.responseCode
-            if (code == 429) throw IOException("Live feed rate limit reached. Try again in a minute.")
+            if (code == 429) {
+                // Not every 429 carries the remaining-credits header; assume the budget is gone.
+                remaining = 0
+                throw IOException("Live feed limit reached. Try again later.")
+            }
             if (code !in 200..299) throw IOException("Live feed returned HTTP $code")
 
             val body = conn.inputStream.bufferedReader().use { it.readText() }
@@ -81,6 +92,16 @@ class OpenSkyClient {
         const val STATES_URL = "https://opensky-network.org/api/states/all"
         const val CACHE_MS = 60_000L
     }
+}
+
+/**
+ * Anonymous access is 400 credits a day and a snapshot costs 4. Spend the budget where it is
+ * useful — fresh positions while there is plenty left, a slow heartbeat once it runs low.
+ */
+internal fun pollIntervalMs(remainingCredits: Int?): Long = when {
+    (remainingCredits ?: 400) >= 150 -> 60_000L
+    (remainingCredits ?: 400) >= 40 -> 5 * 60_000L
+    else -> 15 * 60_000L
 }
 
 /** OpenSky encodes "not reported" as JSON null; optDouble would hand back 0.0 or NaN. */

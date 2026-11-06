@@ -47,7 +47,7 @@ private fun SkyageRoot(vm: AppViewModel) {
     LaunchedEffect(state.ready) {
         if (!state.ready) return@LaunchedEffect
         while (true) {
-            delay(60_000)
+            delay(vm.pollIntervalMs())
             vm.refresh(force = true)
         }
     }

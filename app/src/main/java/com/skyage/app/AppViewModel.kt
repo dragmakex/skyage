@@ -108,6 +108,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun pollIntervalMs(): Long = liveClient.pollIntervalMs()
+
     fun liveFor(flight: TrackedFlight): LiveState? =
         lastLive[flight.callsign.uppercase().trim()]
 
