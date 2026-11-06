@@ -17,8 +17,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.sp
 import com.skyage.app.data.Airport
 import com.skyage.app.data.LiveState
-import com.skyage.app.data.OFF_ROUTE_THRESHOLD_KM
+import com.skyage.app.data.offRouteToleranceKm
 import com.skyage.app.geo.crossTrackKm
+import com.skyage.app.geo.distanceKm
 import com.skyage.app.geo.interpolateGreatCircle
 import com.skyage.app.geo.mercatorY
 import com.skyage.app.geo.progressAlongRoute
@@ -53,8 +54,9 @@ fun FlightMap(
         // Only treat the live position as part of this route when it is plausibly on it. A callsign
         // is not unique per route, so an off-route aircraft must not stretch the viewport.
         val onRoute = if (origin != null && dest != null && lat != null && lon != null) {
+            val routeKm = distanceKm(origin.lat, origin.lon, dest.lat, dest.lon)
             crossTrackKm(origin.lat, origin.lon, dest.lat, dest.lon, lat, lon) <=
-                OFF_ROUTE_THRESHOLD_KM
+                offRouteToleranceKm(routeKm)
         } else true
 
         val points = ArrayList<Pair<Double, Double>>(3)

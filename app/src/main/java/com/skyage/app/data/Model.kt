@@ -78,7 +78,14 @@ data class FlightView(
 )
 
 /**
- * Above this offset from the route we stop believing the matched aircraft is our flight.
- * Wide enough to tolerate real-world route deviations and ATS routing.
+ * Above this offset from the route we stop believing the matched aircraft is our flight: wide
+ * enough to tolerate real-world deviations on short routes.
  */
 const val OFF_ROUTE_THRESHOLD_KM = 400.0
+
+/**
+ * A flat radius is too strict on long flights — Toronto-Delhi is filed 1,600 km off the great
+ * circle because winds and airspace beat geometry — so the tolerance grows with the route.
+ */
+fun offRouteToleranceKm(routeKm: Double?): Double =
+    maxOf(OFF_ROUTE_THRESHOLD_KM, (routeKm ?: 0.0) * 0.15)

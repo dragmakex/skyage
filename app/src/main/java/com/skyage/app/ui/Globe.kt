@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.sp
 import com.skyage.app.data.Airport
 import com.skyage.app.data.FlightView
 import com.skyage.app.data.LiveState
-import com.skyage.app.data.OFF_ROUTE_THRESHOLD_KM
+import com.skyage.app.data.offRouteToleranceKm
 import com.skyage.app.geo.GlobeCamera
 import com.skyage.app.geo.GlobeView
 import com.skyage.app.geo.interpolateGreatCircle
@@ -97,7 +97,7 @@ fun FlightGlobe(
         for (flight in views) {
             val origin = flight.origin ?: continue
             val dest = flight.dest ?: continue
-            val onRoute = (flight.offRouteKm ?: 0.0) <= OFF_ROUTE_THRESHOLD_KM
+            val onRoute = (flight.offRouteKm ?: 0.0) <= offRouteToleranceKm(flight.routeKm)
             drawRoute(origin, dest, globe, if (onRoute) flight.live else null, centre, radius)
             place(origin.lat, origin.lon, globe, centre, radius)
                 ?.let { drawMarker(it, origin, Sky.Label) }

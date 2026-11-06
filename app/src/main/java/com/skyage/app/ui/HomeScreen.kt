@@ -51,7 +51,7 @@ import com.skyage.app.UiState
 import com.skyage.app.data.Airport
 import com.skyage.app.data.FlightPhase
 import com.skyage.app.data.FlightView
-import com.skyage.app.data.OFF_ROUTE_THRESHOLD_KM
+import com.skyage.app.data.offRouteToleranceKm
 import com.skyage.app.geo.GlobeCamera
 import com.skyage.app.ui.theme.Sky
 import dev.chrisbanes.haze.hazeSource
@@ -310,7 +310,7 @@ internal fun routeSummary(view: FlightView): String =
     view.routeKm?.let { "%,d km".format(it.toInt()) } ?: "Route unknown"
 
 internal fun isOffRoute(view: FlightView): Boolean =
-    (view.offRouteKm ?: 0.0) > OFF_ROUTE_THRESHOLD_KM
+    (view.offRouteKm ?: 0.0) > offRouteToleranceKm(view.routeKm)
 
 internal fun liveSummary(view: FlightView): String {
     val live = view.live ?: return ""
