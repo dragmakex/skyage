@@ -346,7 +346,11 @@ fun GlassButton(
     }
 }
 
-/** Text field with the glass body and no Material box stroke: the rim is the border. */
+/**
+ * Text field with the glass body and no Material box stroke: the rim is the border. The caption sits
+ * above the field instead of inside it, because Material's floating label jumps 80 px up and shrinks
+ * the moment the field takes focus, which reads as the layout shoving itself around.
+ */
 @Composable
 fun GlassTextField(
     value: String,
@@ -360,40 +364,46 @@ fun GlassTextField(
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(18.dp)
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label) },
-        placeholder = placeholder?.let { { Text(it) } },
-        singleLine = singleLine,
-        isError = isError,
-        keyboardOptions = keyboardOptions,
-        trailingIcon = trailingIcon,
-        shape = shape,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color.Transparent,
-            unfocusedContainerColor = Color.Transparent,
-            errorContainerColor = Color.Transparent,
-            focusedBorderColor = Color.Transparent,
-            unfocusedBorderColor = Color.Transparent,
-            errorBorderColor = Color.Transparent,
-            focusedTextColor = Sky.Label,
-            unfocusedTextColor = Sky.Label,
-            errorTextColor = Sky.Label,
-            focusedLabelColor = Sky.Accent,
-            unfocusedLabelColor = Sky.SecondaryLabel,
-            errorLabelColor = Sky.Alert,
-            focusedPlaceholderColor = Sky.TertiaryLabel,
-            unfocusedPlaceholderColor = Sky.TertiaryLabel,
-            focusedTrailingIconColor = Sky.SecondaryLabel,
-            unfocusedTrailingIconColor = Sky.SecondaryLabel,
-            cursorColor = Sky.Accent,
-        ),
-        modifier = modifier.liquidGlass(
+    Column(modifier) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isError) Sky.Alert else Sky.TertiaryLabel,
+            modifier = Modifier.padding(start = 6.dp, bottom = 6.dp),
+        )
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = placeholder?.let { { Text(it) } },
+            singleLine = singleLine,
+            isError = isError,
+            keyboardOptions = keyboardOptions,
+            trailingIcon = trailingIcon,
             shape = shape,
-            material = GlassMaterial.Clear,
-            tint = if (isError) Sky.Alert.copy(alpha = 0.16f) else null,
-            lift = 4.dp,
-        ),
-    )
+            modifier = Modifier
+                .fillMaxWidth()
+                .liquidGlass(
+                    shape = shape,
+                    material = GlassMaterial.Clear,
+                    tint = if (isError) Sky.Alert.copy(alpha = 0.16f) else null,
+                    lift = 4.dp,
+                ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                errorContainerColor = Color.Transparent,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                errorBorderColor = Color.Transparent,
+                focusedTextColor = Sky.Label,
+                unfocusedTextColor = Sky.Label,
+                errorTextColor = Sky.Label,
+                focusedPlaceholderColor = Sky.TertiaryLabel,
+                unfocusedPlaceholderColor = Sky.TertiaryLabel,
+                focusedTrailingIconColor = Sky.SecondaryLabel,
+                unfocusedTrailingIconColor = Sky.SecondaryLabel,
+                cursorColor = Sky.Accent,
+            ),
+        )
+    }
 }
