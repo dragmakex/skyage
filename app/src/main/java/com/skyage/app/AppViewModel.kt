@@ -14,6 +14,8 @@ import com.skyage.app.data.offRouteToleranceKm
 import com.skyage.app.data.OpenSkyClient
 import com.skyage.app.data.ParsedFlightNumber
 import com.skyage.app.data.TrackedFlight
+import com.skyage.app.data.Trip
+import com.skyage.app.data.tripKey
 import com.skyage.app.geo.crossTrackKm
 import com.skyage.app.geo.distanceKm
 import com.skyage.app.geo.progressAlongRoute
@@ -37,6 +39,8 @@ data class UiState(
     val message: String? = null,
     val airportQuery: String = "",
     val airportResults: List<Airport> = emptyList(),
+    /** Every flight ever followed, for the voyage totals. */
+    val trips: List<Trip> = emptyList(),
 )
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
@@ -51,6 +55,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // Kept across polls: a callsign that drops out still tells us when and where it was last seen.
     private val lastKnown = mutableMapOf<String, LiveState>()
     private var tracked: List<TrackedFlight> = emptyList()
+    private var trips: List<Trip> = emptyList()
     private var searchJob: Job? = null
 
     init {
@@ -61,7 +66,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 store.load().also { lastKnown.putAll(store.loadSeen()) }
             }
             tracked = loaded
-            _state.update { it.copy(ready = true, views = buildViews()) }
+            trips = withContext(Dispatchers.IO) { store.loadTrips() }
+            _state.update { it.copy(ready = true, views = buildViews(), trips = trips) }
             refresh()
         }
     }
@@ -157,8 +163,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             addedAt = System.currentTimeMillis(),
         )
         tracked = tracked + flight
+        // Only a flight with both ends known can be counted as a place visited.
+        if (origin != null && dest != null) {
+            val trip = Trip(
+                date = flight.addedAt,
+                number = flight.number,
+                airlineIata = flight.airlineIata,
+                originIata = origin.code,
+                destIata = dest.code,
+            )
+            if (trips.none { tripKey(it) == tripKey(trip) }) {
+                trips = trips + trip
+                viewModelScope.launch(Dispatchers.IO) { store.saveTrips(trips) }
+            }
+        }
         viewModelScope.launch(Dispatchers.IO) { store.save(tracked) }
-        _state.update { it.copy(views = buildViews(), message = null) }
+        _state.update { it.copy(views = buildViews(), trips = trips, message = null) }
         return true
     }
 

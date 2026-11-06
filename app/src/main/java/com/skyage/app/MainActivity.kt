@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.skyage.app.ui.AddFlightScreen
 import com.skyage.app.ui.FlightDetailScreen
 import com.skyage.app.ui.HomeScreen
+import com.skyage.app.ui.VoyageScreen
 import com.skyage.app.ui.theme.SkyageTheme
 import kotlinx.coroutines.delay
 
@@ -36,6 +37,7 @@ private sealed interface Screen {
     data object Home : Screen
     data object Add : Screen
     data class Detail(val key: String) : Screen
+    data object Voyage : Screen
 }
 
 @Composable
@@ -60,7 +62,14 @@ private fun SkyageRoot(vm: AppViewModel) {
             airports = vm.allAirports(),
             onAdd = { screen = Screen.Add },
             onOpen = { key -> screen = Screen.Detail(key) },
+            onVoyage = { screen = Screen.Voyage },
             onRefresh = { vm.refresh(force = true) },
+        )
+
+        Screen.Voyage -> VoyageScreen(
+            trips = state.trips,
+            airports = vm.allAirports(),
+            onBack = { screen = Screen.Home },
         )
 
         Screen.Add -> AddFlightScreen(

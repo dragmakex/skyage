@@ -10,6 +10,7 @@ class FlightStore(context: Context) {
 
     private val file = File(context.filesDir, "flights.json")
     private val seenFile = File(context.filesDir, "last-seen.dat")
+    private val tripsFile = File(context.filesDir, "trips.dat")
 
     fun load(): List<TrackedFlight> {
         if (!file.exists()) return emptyList()
@@ -48,6 +49,16 @@ class FlightStore(context: Context) {
             )
         }
         runCatching { file.writeText(arr.toString()) }
+    }
+
+    /** Every flight ever followed, with its route: the raw material for the voyage totals. */
+    fun loadTrips(): List<Trip> {
+        if (!tripsFile.exists()) return emptyList()
+        return runCatching { decodeTrips(tripsFile.readText()) }.getOrDefault(emptyList())
+    }
+
+    fun saveTrips(trips: List<Trip>) {
+        runCatching { tripsFile.writeText(encodeTrips(trips)) }
     }
 
     /** Where each followed callsign was when we last saw it, so a restart does not forget. */

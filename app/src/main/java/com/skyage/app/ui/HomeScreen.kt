@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -72,6 +73,7 @@ fun HomeScreen(
     airports: List<Airport>,
     onAdd: () -> Unit,
     onOpen: (String) -> Unit,
+    onVoyage: () -> Unit,
     onRefresh: () -> Unit,
 ) {
     val sheetState = rememberStandardBottomSheetState(
@@ -92,7 +94,7 @@ fun HomeScreen(
             sheetShadowElevation = 0.dp,
             sheetTonalElevation = 0.dp,
             sheetSwipeEnabled = true,
-            sheetContent = { FlightsSheet(state, onAdd, onOpen) },
+            sheetContent = { FlightsSheet(state, onAdd, onOpen, onVoyage) },
         ) { _ ->
             // Inner padding is ignored on purpose: the map runs edge to edge and under the sheet.
             Box(Modifier.fillMaxSize()) {
@@ -158,7 +160,12 @@ private fun StatusPill(state: UiState, onRefresh: () -> Unit, modifier: Modifier
 }
 
 @Composable
-private fun FlightsSheet(state: UiState, onAdd: () -> Unit, onOpen: (String) -> Unit) {
+private fun FlightsSheet(
+    state: UiState,
+    onAdd: () -> Unit,
+    onOpen: (String) -> Unit,
+    onVoyage: () -> Unit,
+) {
     val navBar = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
     GlassPanel(
@@ -196,12 +203,20 @@ private fun FlightsSheet(state: UiState, onAdd: () -> Unit, onOpen: (String) -> 
                     )
                 }
             }
-            GlassIconButton(
-                icon = Icons.Default.Add,
-                contentDescription = "Follow a flight",
-                onClick = onAdd,
-                size = 44.dp,
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                GlassIconButton(
+                    icon = Icons.Default.Luggage,
+                    contentDescription = "Voyage",
+                    onClick = onVoyage,
+                    size = 44.dp,
+                )
+                GlassIconButton(
+                    icon = Icons.Default.Add,
+                    contentDescription = "Follow a flight",
+                    onClick = onAdd,
+                    size = 44.dp,
+                )
+            }
         }
 
         // Surfaced whatever the list shows: a rate limit or outage is the usual reason a
