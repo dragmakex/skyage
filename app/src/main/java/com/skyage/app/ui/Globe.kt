@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.sp
 import com.skyage.app.data.Airport
 import com.skyage.app.data.FlightView
@@ -57,6 +58,8 @@ fun FlightGlobe(
     modifier: Modifier = Modifier,
 ) {
     val dust = remember(airports) { GlobeDust(airports.size) }
+    val labelPx = with(LocalDensity.current) { 11.sp.toPx() }
+    val labels = remember(labelPx) { GlobeLabels(labelPx) }
 
     Canvas(
         modifier = modifier
@@ -94,15 +97,16 @@ fun FlightGlobe(
         // Dims the far half of the disc after the grid: it is what makes the rim read as a curve.
         drawLimbShade(centre, radius)
 
+        labels.reset()
         for (flight in views) {
             val origin = flight.origin ?: continue
             val dest = flight.dest ?: continue
             val onRoute = (flight.offRouteKm ?: 0.0) <= offRouteToleranceKm(flight.routeKm)
             drawRoute(origin, dest, globe, if (onRoute) flight.live else null, centre, radius)
             place(origin.lat, origin.lon, globe, centre, radius)
-                ?.let { drawMarker(it, origin, Sky.Label) }
+                ?.let { drawMarker(it, origin, Sky.Label, labels) }
             place(dest.lat, dest.lon, globe, centre, radius)
-                ?.let { drawMarker(it, dest, Sky.Accent) }
+                ?.let { drawMarker(it, dest, Sky.Accent, labels) }
 
             val live = flight.live
             if (onRoute && live != null) {
@@ -314,18 +318,64 @@ private fun place(
 ): Offset? = globe.screen(lat, lon, centre.x, centre.y, radius)
     ?.let { Offset(it[0].toFloat(), it[1].toFloat()) }
 
-private fun DrawScope.drawMarker(at: Offset, airport: Airport, colour: Color) {
+/**
+ * The label's paint and placement state, reused every frame: one Paint instead of one per marker,
+ * and the list of boxes already spoken for. Reset at the start of each frame.
+ */
+private class GlobeLabels(textSizePx: Float) {
+    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        textSize = textSizePx
+        isFakeBoldText = true
+        textAlign = android.graphics.Paint.Align.CENTER
+        // A shadow under the glyphs keeps the code readable over the dot grid and the bright limb.
+        setShadowLayer(textSizePx * 0.45f, 0f, textSizePx * 0.14f, 0xFF04070F.toInt())
+    }
+    val layout = LabelLayout()
+    val seen = HashSet<String>(16)
+    val out = FloatArray(2)
+
+    fun reset() {
+        layout.clear()
+        seen.clear()
+    }
+}
+
+private fun DrawScope.drawMarker(
+    at: Offset,
+    airport: Airport,
+    colour: Color,
+    labels: GlobeLabels,
+) {
     drawCircle(Color(0x33FFFFFF), radius = 9f, center = at)
     drawCircle(colour, radius = 4f, center = at)
 
-    val label = airport.iata ?: airport.icao ?: return
-    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        color = colour.toArgb()
-        textSize = 11.sp.toPx()
-        isFakeBoldText = true
-        textAlign = android.graphics.Paint.Align.CENTER
-    }
-    drawContext.canvas.nativeCanvas.drawText(label, at.x, at.y - 14f, paint)
+    val code = airport.iata ?: airport.icao ?: return
+    // Two routes through the same hub are one label, not two on top of each other.
+    if (!labels.seen.add(code)) return
+
+    val paint = labels.paint
+    paint.color = colour.toArgb()
+    val width = paint.measureText(code)
+    val metrics = paint.fontMetrics
+    val height = metrics.descent - metrics.ascent
+    val placed = labels.layout.place(
+        x = at.x,
+        y = at.y,
+        w = width,
+        h = height,
+        gap = 13f,
+        pad = 8f,
+        boundsW = size.width,
+        boundsH = size.height,
+        out = labels.out,
+    )
+    if (!placed) return
+    drawContext.canvas.nativeCanvas.drawText(
+        code,
+        labels.out[0] + width / 2f,
+        labels.out[1] - metrics.ascent,
+        paint,
+    )
 }
 
 private fun DrawScope.drawAircraft(live: LiveState, globe: GlobeView, centre: Offset, radius: Float) {
