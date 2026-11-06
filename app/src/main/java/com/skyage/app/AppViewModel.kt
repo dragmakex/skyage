@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.skyage.app.data.Airport
+import com.skyage.app.data.arrivedAt
 import com.skyage.app.data.BundledData
 import com.skyage.app.data.FlightPhase
 import com.skyage.app.data.FlightStore
@@ -47,8 +48,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val state: StateFlow<UiState> = _state.asStateFlow()
 
     private var lastLive: Map<String, LiveState> = emptyMap()
-    // Kept across polls: a callsign that drops out still tells us when it was last heard.
-    private val lastSeen = mutableMapOf<String, Long>()
+    // Kept across polls: a callsign that drops out still tells us when and where it was last seen.
+    private val lastKnown = mutableMapOf<String, LiveState>()
     private var tracked: List<TrackedFlight> = emptyList()
     private var searchJob: Job? = null
 
@@ -80,7 +81,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     liveClient.snapshot(force = true)
                 }
                 lastLive = states.associateBy { it.callsign.uppercase().trim() }
-                states.forEach { lastSeen[it.callsign.uppercase().trim()] = it.lastContact }
+                states.forEach { lastKnown[it.callsign.uppercase().trim()] = it }
                 _state.update {
                     it.copy(
                         refreshing = false,
@@ -173,24 +174,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             val dest = bundled.airportByCode(f.destIata)
             val key = f.callsign.uppercase().trim()
             val live = lastLive[key]
+            // Without a live state, the last one we saw still says where it went: that is the
+            // difference between a flight that landed and one that flew out of coverage.
+            val known = if (live == null) lastKnown[key] else null
+            val fix = live ?: known
             val routeKm = if (origin != null && dest != null) {
                 distanceKm(origin.lat, origin.lon, dest.lat, dest.lon)
             } else null
 
-            val positioned = origin != null && dest != null && live?.lat != null && live.lon != null
+            val positioned = origin != null && dest != null && fix?.lat != null && fix.lon != null
             val offRouteKm = if (positioned) {
-                crossTrackKm(origin.lat, origin.lon, dest.lat, dest.lon, live.lat, live.lon)
+                crossTrackKm(origin.lat, origin.lon, dest.lat, dest.lon, fix.lat, fix.lon)
             } else null
 
             // A callsign is not unique per route, so a position far from the route means the
             // aircraft we matched is probably a different flight. Report no progress instead of a
             // confident 0%.
             val progress = if (positioned && (offRouteKm ?: 0.0) <= offRouteToleranceKm(routeKm)) {
-                progressAlongRoute(origin.lat, origin.lon, dest.lat, dest.lon, live.lat, live.lon)
+                progressAlongRoute(origin.lat, origin.lon, dest.lat, dest.lon, fix.lat, fix.lon)
             } else null
 
+            // "Landed" is the same fact from two angles: an aircraft still transmitting on the
+            // ground at its destination, or one that stopped transmitting there.
+            val landed = arrivedAt(live ?: known, dest)
             val phase = when {
+                live == null && landed -> FlightPhase.LANDED
                 live == null -> FlightPhase.NO_DATA
+                live.onGround && landed -> FlightPhase.LANDED
                 live.onGround -> FlightPhase.ON_GROUND
                 else -> FlightPhase.AIRBORNE
             }
@@ -201,7 +211,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 origin = origin,
                 dest = dest,
                 phase = phase,
-                lastSeenAt = if (live == null) lastSeen[key] else null,
+                lastSeenAt = known?.lastContact,
                 progress = progress,
                 routeKm = routeKm,
                 remainingKm = if (routeKm != null && progress != null) routeKm * (1 - progress) else null,

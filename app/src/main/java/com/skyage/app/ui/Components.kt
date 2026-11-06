@@ -43,6 +43,7 @@ fun PhaseBadge(phase: FlightPhase) {
         FlightPhase.AIRBORNE -> "IN AIR" to Sky.OnTime
         FlightPhase.ON_GROUND -> "ON GROUND" to Sky.Warn
         FlightPhase.NO_DATA -> "NO SIGNAL" to Sky.TertiaryLabel
+        FlightPhase.LANDED -> "LANDED" to Sky.Accent
     }
     Row(
         verticalAlignment = Alignment.CenterVertically,

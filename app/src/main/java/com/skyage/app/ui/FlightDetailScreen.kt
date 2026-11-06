@@ -196,6 +196,22 @@ fun FlightDetailScreen(
                 Spacer(Modifier.height(12.dp))
             }
 
+            if (view.phase == FlightPhase.LANDED) {
+                SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = if (view.live != null) {
+                            "On the ground at ${view.dest?.code ?: "its destination"}."
+                        } else {
+                            "Landed at ${view.dest?.code ?: "its destination"}." +
+                                (view.lastSeenAt?.let { " Last picked up at ${utcTime(it)}." } ?: "")
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Sky.SecondaryLabel,
+                    )
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
             if (view.phase == FlightPhase.NO_DATA) {
                 SurfaceCard(modifier = Modifier.fillMaxWidth()) {
                     Text(

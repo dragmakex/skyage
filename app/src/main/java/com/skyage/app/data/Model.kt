@@ -1,5 +1,7 @@
 package com.skyage.app.data
 
+import com.skyage.app.geo.distanceKm
+
 /**
  * Domain model. [Airport] and [Airline] come from `tools/build_dataset.py` (OurAirports and
  * Wikidata, both public-domain/CC0); see `docs/DATA-SOURCES.md`.
@@ -57,7 +59,23 @@ data class LiveState(
  * We can only prove GROUND/AIR from ADS-B, so [DERIVED_LIVE] carries the honest subset and
  * the finer states stay reserved for a schedule-aware data source.
  */
-enum class FlightPhase { NO_DATA, ON_GROUND, AIRBORNE }
+enum class FlightPhase { NO_DATA, ON_GROUND, AIRBORNE, LANDED }
+
+/** How close the last fix must be to the destination airport to call a missing flight landed. */
+const val ARRIVAL_RADIUS_KM = 25.0
+
+/**
+ * A flight that stops transmitting right at its destination has landed; one that stops mid-route
+ * flew into a receiver gap. ADS-B cannot tell us which, but the last position can: an aircraft last
+ * seen on the runway does not need a schedule to be believed, and one last seen over the Atlantic
+ * must not be called arrived.
+ */
+fun arrivedAt(last: LiveState?, dest: Airport?, radiusKm: Double = ARRIVAL_RADIUS_KM): Boolean {
+    val lat = last?.lat ?: return false
+    val lon = last.lon ?: return false
+    val airport = dest ?: return false
+    return distanceKm(lat, lon, airport.lat, airport.lon) <= radiusKm
+}
 
 /** A tracked flight joined with its live state and computed route progress. */
 data class FlightView(
