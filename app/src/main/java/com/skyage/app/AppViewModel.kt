@@ -58,7 +58,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // Parsing the datasets and the saved flights is file IO: never do it on the main thread.
             val loaded = withContext(Dispatchers.IO) {
                 bundled.ensureLoaded()
-                store.load()
+                store.load().also { lastKnown.putAll(store.loadSeen()) }
             }
             tracked = loaded
             _state.update { it.copy(ready = true, views = buildViews()) }
@@ -82,6 +82,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 lastLive = states.associateBy { it.callsign.uppercase().trim() }
                 states.forEach { lastKnown[it.callsign.uppercase().trim()] = it }
+                // Bounded by the followed flights, so this cannot grow without limit.
+                val followed = tracked.map { it.callsign.uppercase().trim() }.toSet()
+                val keep = lastKnown.filterKeys { it in followed }
+                withContext(Dispatchers.IO) { store.saveSeen(keep) }
                 _state.update {
                     it.copy(
                         refreshing = false,

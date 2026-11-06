@@ -9,6 +9,7 @@ import java.io.File
 class FlightStore(context: Context) {
 
     private val file = File(context.filesDir, "flights.json")
+    private val seenFile = File(context.filesDir, "last-seen.dat")
 
     fun load(): List<TrackedFlight> {
         if (!file.exists()) return emptyList()
@@ -48,4 +49,50 @@ class FlightStore(context: Context) {
         }
         runCatching { file.writeText(arr.toString()) }
     }
+
+    /** Where each followed callsign was when we last saw it, so a restart does not forget. */
+    fun loadSeen(): Map<String, LiveState> {
+        if (!seenFile.exists()) return emptyMap()
+        return runCatching { decodeSeen(seenFile.readText()) }.getOrDefault(emptyMap())
+    }
+
+    fun saveSeen(seen: Map<String, LiveState>) {
+        runCatching { seenFile.writeText(encodeSeen(seen)) }
+    }
 }
+
+/**
+ * Last known fix per callsign, in a `|`-delimited line format rather than JSON: [FlightStore]
+ * already writes JSON for the followed flights, but this cache is written on every poll and read
+ * at startup, and a plain split keeps it testable off-device.
+ */
+internal fun encodeSeen(seen: Map<String, LiveState>): String = seen.entries
+    .mapNotNull { (key, s) ->
+        val lat = s.lat ?: return@mapNotNull null
+        val lon = s.lon ?: return@mapNotNull null
+        "$key|$lat|$lon|${if (s.onGround) 1 else 0}|${s.lastContact}"
+    }
+    .joinToString("\n")
+
+internal fun decodeSeen(text: String): Map<String, LiveState> = text.lineSequence()
+    .mapNotNull { line ->
+        val p = line.split('|')
+        if (p.size < 5) return@mapNotNull null
+        val lat = p[1].toDoubleOrNull() ?: return@mapNotNull null
+        val lon = p[2].toDoubleOrNull() ?: return@mapNotNull null
+        val contact = p[4].toLongOrNull() ?: return@mapNotNull null
+        p[0] to LiveState(
+            icao24 = "",
+            callsign = p[0],
+            originCountry = "",
+            lat = lat,
+            lon = lon,
+            baroAltitudeM = null,
+            velocityMs = null,
+            headingDeg = null,
+            verticalRateMs = null,
+            onGround = p[3] == "1",
+            lastContact = contact,
+        )
+    }
+    .toMap()
