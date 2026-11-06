@@ -83,7 +83,6 @@ private fun SkyageRoot(vm: AppViewModel) {
                 FlightDetailScreen(
                     view = view,
                     airports = vm.allAirports(),
-                    refreshing = state.refreshing,
                     onBack = { screen = Screen.Home },
                     onRefresh = { vm.refresh(force = true) },
                     onDelete = {

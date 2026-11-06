@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -21,8 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,50 +36,33 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FlightDetailScreen(
     view: FlightView,
     airports: List<Airport>,
-    refreshing: Boolean,
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onDelete: () -> Unit,
 ) {
     GlassScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(view.flight.number, style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = {
-                    GlassIconButton(
-                        icon = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        onClick = onBack,
-                        size = 40.dp,
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                },
-                actions = {
-                    if (refreshing) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.padding(end = 8.dp).height(20.dp),
-                            strokeWidth = 2.dp,
-                            color = Sky.Pro,
-                        )
-                    } else {
-                        GlassIconButton(
-                            icon = Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            onClick = onRefresh,
-                            size = 40.dp,
-                        )
-                    }
-                    IconButton(onClick = onDelete, modifier = Modifier.padding(end = 4.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Stop following", tint = Sky.SecondaryLabel)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
-            )
+            GlassTopBar(
+                title = view.flight.number,
+                onBack = onBack,
+            ) {
+                GlassIconButton(
+                    icon = Icons.Default.Refresh,
+                    contentDescription = "Refresh",
+                    onClick = onRefresh,
+                    size = 44.dp,
+                )
+                GlassIconButton(
+                    icon = Icons.Default.Delete,
+                    contentDescription = "Stop following",
+                    onClick = onDelete,
+                    size = 44.dp,
+                )
+            }
         },
     ) { padding ->
         Column(
