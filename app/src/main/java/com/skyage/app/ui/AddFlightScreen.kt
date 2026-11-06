@@ -214,7 +214,7 @@ private fun AirportRow(airport: Airport, onClick: () -> Unit) {
             Text(
                 text = airport.code,
                 style = MaterialTheme.typography.titleMedium,
-                color = Sky.Pro,
+                color = Sky.Accent,
             )
         }
         Column {

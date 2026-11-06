@@ -42,7 +42,7 @@ fun FlightMap(
 ) {
     val dust = remember(airports) { Dust(airports.size) }
     Canvas(modifier = modifier) {
-        drawRect(color = Color(0xFF0B0B0C))
+        drawRect(color = Color(0xFF070C18))
 
         val lat = live?.lat
         val lon = live?.lon
@@ -72,7 +72,7 @@ fun FlightMap(
         }
 
         origin?.let { drawAirportMarker(it, proj, Sky.Label) }
-        dest?.let { drawAirportMarker(it, proj, Sky.Pro) }
+        dest?.let { drawAirportMarker(it, proj, Sky.Accent) }
 
         if (onRoute && lat != null && lon != null) drawAircraft(lon, lat, live.headingDeg, proj)
     }
@@ -111,7 +111,7 @@ private fun DrawScope.drawGraticule(proj: Projection, line: Color = Color(0x14FF
 private class Dust(airportCount: Int) {
     val xy = FloatArray(airportCount * 6)
     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x73BF5AF2
+        color = 0x734C8DFF
         strokeWidth = 2f
         strokeCap = android.graphics.Paint.Cap.ROUND
     }
@@ -174,7 +174,7 @@ private fun DrawScope.drawRoute(
             val upTo = (progress * samples).roundToInt().coerceIn(1, samples)
             drawPath(
                 buildPath(pts.subList(0, upTo + 1)),
-                color = Sky.Pro,
+                color = Sky.Accent,
                 style = Stroke(width = 3f, cap = StrokeCap.Round),
             )
         }
@@ -199,8 +199,8 @@ private fun DrawScope.drawAirportMarker(airport: Airport, proj: Projection, colo
 
 private fun DrawScope.drawAircraft(lon: Double, lat: Double, heading: Double?, proj: Projection) {
     val center = Offset(proj.x(lon), proj.y(lat))
-    drawCircle(Color(0x22BF5AF2), radius = 26f, center = center)
-    drawCircle(Color(0x44BF5AF2), radius = 16f, center = center)
+    drawCircle(Color(0x224C8DFF), radius = 26f, center = center)
+    drawCircle(Color(0x444C8DFF), radius = 16f, center = center)
 
     rotate(degrees = (heading ?: 0.0).toFloat(), pivot = center) {
         val plane = Path().apply {

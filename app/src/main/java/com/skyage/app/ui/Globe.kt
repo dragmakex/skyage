@@ -102,7 +102,7 @@ fun FlightGlobe(
             place(origin.lat, origin.lon, globe, centre, radius)
                 ?.let { drawMarker(it, origin, Sky.Label) }
             place(dest.lat, dest.lon, globe, centre, radius)
-                ?.let { drawMarker(it, dest, Sky.Pro) }
+                ?.let { drawMarker(it, dest, Sky.Accent) }
 
             val live = flight.live
             if (onRoute && live != null) {
@@ -116,7 +116,7 @@ private fun DrawScope.drawAurora() {
     val violet = size.width * 0.16f
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(Color(0x557B2CBF), Color.Transparent),
+            colors = listOf(Color(0x551D4ED8), Color.Transparent),
             center = Offset(size.width * 0.16f, size.height * 0.10f),
             radius = violet * 2.2f,
         ),
@@ -126,7 +126,7 @@ private fun DrawScope.drawAurora() {
     val blue = size.width * 0.5f
     drawCircle(
         brush = Brush.radialGradient(
-            colors = listOf(Color(0x441E3A8A), Color.Transparent),
+            colors = listOf(Color(0x440F3A7A), Color.Transparent),
             center = Offset(size.width * 0.9f, size.height * 0.46f),
             radius = blue,
         ),
@@ -141,7 +141,7 @@ private fun DrawScope.drawAtmosphere(centre: Offset, radius: Float) {
         brush = Brush.radialGradient(
             colorStops = arrayOf(
                 0.78f to Color.Transparent,
-                0.90f to Color(0x3D7B2CBF),
+                0.90f to Color(0x3D2E6BE6),
                 1f to Color.Transparent,
             ),
             center = centre,
@@ -154,9 +154,9 @@ private fun DrawScope.drawAtmosphere(centre: Offset, radius: Float) {
     drawCircle(
         brush = Brush.radialGradient(
             colorStops = arrayOf(
-                0f to Color(0xFF172742),
-                0.55f to Color(0xFF0C1524),
-                1f to Color(0xFF07090F),
+                0f to Color(0xFF0C1B33),
+                0.55f to Color(0xFF081222),
+                1f to Color(0xFF05080F),
             ),
             center = Offset(centre.x - radius * 0.35f, centre.y - radius * 0.38f),
             radius = radius * 1.75f,
@@ -164,13 +164,13 @@ private fun DrawScope.drawAtmosphere(centre: Offset, radius: Float) {
         radius = radius,
         center = centre,
     )
-    drawCircle(Color(0x59BF5AF2), radius = radius, center = centre, style = Stroke(1.5f))
+    drawCircle(Color(0x594C8DFF), radius = radius, center = centre, style = Stroke(1.5f))
 }
 
 private fun DrawScope.drawLimbShade(centre: Offset, radius: Float) {
     drawCircle(
         brush = Brush.radialGradient(
-            colorStops = arrayOf(0.62f to Color.Transparent, 1f to Color(0xB305060A)),
+            colorStops = arrayOf(0.62f to Color.Transparent, 1f to Color(0xB304070F)),
             center = centre,
             radius = radius,
         ),
@@ -242,7 +242,7 @@ private class GlobeDust(airportCount: Int) {
     val xy = FloatArray(airportCount * 2)
     val scratch = DoubleArray(2)
     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x73BF5AF2
+        color = 0x734C8DFF
         strokeWidth = 2f
         strokeCap = android.graphics.Paint.Cap.ROUND
     }
@@ -299,7 +299,7 @@ private fun DrawScope.drawRoute(
         )
         if (progress != null && progress > 0.001) {
             val upTo = (progress * samples).roundToInt().coerceIn(1, samples)
-            drawPath(arc(upTo), color = Sky.Pro, style = Stroke(width = 3f, cap = StrokeCap.Round))
+            drawPath(arc(upTo), color = Sky.Accent, style = Stroke(width = 3f, cap = StrokeCap.Round))
         }
     }
 }
@@ -333,8 +333,8 @@ private fun DrawScope.drawAircraft(live: LiveState, globe: GlobeView, centre: Of
     val lon = live.lon ?: return
     val at = place(lat, lon, globe, centre, radius) ?: return
 
-    drawCircle(Color(0x22BF5AF2), radius = 26f, center = at)
-    drawCircle(Color(0x44BF5AF2), radius = 16f, center = at)
+    drawCircle(Color(0x224C8DFF), radius = 26f, center = at)
+    drawCircle(Color(0x444C8DFF), radius = 16f, center = at)
 
     // Screen-up is not north away from the centre meridian, so borrow the local north direction.
     val north = globe.screen(

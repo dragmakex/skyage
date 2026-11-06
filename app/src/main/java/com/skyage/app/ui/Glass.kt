@@ -193,8 +193,8 @@ fun Modifier.nightBackdrop(): Modifier = drawBehind {
     drawRect(Sky.Night)
     drawRect(
         Brush.radialGradient(
-            0f to Sky.AuroraViolet.copy(alpha = 0.44f),
-            0.55f to Sky.AuroraViolet.copy(alpha = 0.14f),
+            0f to Sky.AuroraTop.copy(alpha = 0.44f),
+            0.55f to Sky.AuroraTop.copy(alpha = 0.14f),
             1f to Color.Transparent,
             center = Offset(size.width * 0.10f, size.height * 0.02f),
             radius = size.width * 1.15f,
@@ -210,7 +210,7 @@ fun Modifier.nightBackdrop(): Modifier = drawBehind {
     )
     drawRect(
         Brush.radialGradient(
-            0f to Sky.ProDeep.copy(alpha = 0.30f),
+            0f to Sky.AccentDeep.copy(alpha = 0.30f),
             1f to Color.Transparent,
             center = Offset(size.width * 0.45f, size.height * 0.95f),
             radius = size.width * 1.1f,
@@ -331,7 +331,7 @@ fun GlassButton(
             .liquidGlass(
                 shape = RoundedCornerShape(20.dp),
                 material = GlassMaterial.Regular,
-                tint = Sky.Pro.copy(alpha = 0.26f),
+                tint = Sky.Accent.copy(alpha = 0.26f),
             )
             .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 16.dp),
@@ -380,14 +380,14 @@ fun GlassTextField(
             focusedTextColor = Sky.Label,
             unfocusedTextColor = Sky.Label,
             errorTextColor = Sky.Label,
-            focusedLabelColor = Sky.Pro,
+            focusedLabelColor = Sky.Accent,
             unfocusedLabelColor = Sky.SecondaryLabel,
             errorLabelColor = Sky.Alert,
             focusedPlaceholderColor = Sky.TertiaryLabel,
             unfocusedPlaceholderColor = Sky.TertiaryLabel,
             focusedTrailingIconColor = Sky.SecondaryLabel,
             unfocusedTrailingIconColor = Sky.SecondaryLabel,
-            cursorColor = Sky.Pro,
+            cursorColor = Sky.Accent,
         ),
         modifier = modifier.liquidGlass(
             shape = shape,

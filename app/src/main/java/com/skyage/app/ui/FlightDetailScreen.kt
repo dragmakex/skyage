@@ -131,7 +131,7 @@ fun FlightDetailScreen(
                     Text(
                         text = "${(it * 100).toInt()}%",
                         style = MaterialTheme.typography.labelLarge,
-                        color = Sky.Pro,
+                        color = Sky.Accent,
                     )
                 }
                 Text(

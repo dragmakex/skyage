@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -110,7 +111,9 @@ fun ProgressRail(fraction: Double?, modifier: Modifier = Modifier) {
                     .fillMaxWidth(f)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Sky.Pro)
+                    .background(
+                        Brush.horizontalGradient(listOf(Sky.Accent, Color(0xFF6FA8FF)))
+                    )
             )
         }
     }
