@@ -82,11 +82,15 @@ fun AddFlightScreen(
     val parsed = remember(numberText) { onResolve(numberText) }
     val scroll = rememberScrollState()
     var searchTop by remember { mutableStateOf(0) }
+    var panelBottom by remember { mutableStateOf(0) }
 
     // The results sit below a three-field form, which the keyboard then covers: pull the search
-    // block to the top as soon as it has something to show.
-    LaunchedEffect(slot, state.airportResults) {
-        if (slot != null) scroll.animateScrollTo(searchTop.coerceIn(0, scroll.maxValue))
+    // block to the top as soon as it has something to show. A search with no match is one line
+    // tall, and there the line itself is what has to be brought above the keyboard.
+    LaunchedEffect(slot, state.airportResults, panelBottom) {
+        if (slot == null) return@LaunchedEffect
+        val target = if (state.airportResults.isEmpty()) panelBottom else searchTop
+        scroll.animateScrollTo(target.coerceIn(0, scroll.maxValue))
     }
     val canSave = parsed != null && slot == null
 
@@ -201,7 +205,11 @@ fun AddFlightScreen(
                         text = "No airport matches that.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Sky.SecondaryLabel,
-                        modifier = Modifier.padding(start = 6.dp, top = 12.dp),
+                        modifier = Modifier
+                            .padding(start = 6.dp, top = 12.dp)
+                            .onGloballyPositioned {
+                                panelBottom = it.positionInParent().y.toInt() + it.size.height
+                            },
                     )
                 }
             }
