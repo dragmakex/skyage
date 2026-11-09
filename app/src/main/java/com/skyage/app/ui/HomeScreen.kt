@@ -246,7 +246,7 @@ private fun FlightsSheet(
 }
 
 @Composable
-private fun Banner(message: String, modifier: Modifier = Modifier) {
+internal fun Banner(message: String, modifier: Modifier = Modifier) {
     SurfaceCard(modifier = modifier.fillMaxWidth()) {
         Text(message, style = MaterialTheme.typography.bodyMedium, color = Sky.Warn)
     }

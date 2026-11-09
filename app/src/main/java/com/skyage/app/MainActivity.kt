@@ -104,6 +104,7 @@ private fun SkyageRoot(vm: AppViewModel) {
                 if (ok) vm.refresh(force = true)
                 ok
             },
+            onDismissMessage = { vm.dismissMessage() },
         )
 
         is Screen.Detail -> {

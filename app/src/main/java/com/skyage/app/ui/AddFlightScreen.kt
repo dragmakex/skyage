@@ -71,6 +71,7 @@ fun AddFlightScreen(
     onSearchAirports: (String) -> Unit,
     onResolve: (String) -> ParsedFlightNumber?,
     onSave: (ParsedFlightNumber, Airport?, Airport?) -> Boolean,
+    onDismissMessage: () -> Unit,
 ) {
     // Remembered across rotation: losing a half-typed flight to a screen turn is not acceptable.
     var numberText by rememberSaveable { mutableStateOf("") }
@@ -112,6 +113,7 @@ fun AddFlightScreen(
                     origin = null
                     dest = null
                     slot = null
+                    onDismissMessage()
                 },
                 label = "Flight number",
                 placeholder = "UA123",
@@ -196,6 +198,9 @@ fun AddFlightScreen(
             }
 
             Spacer(Modifier.height(24.dp))
+
+            // A refused save is also answered here: the button would otherwise do nothing visible.
+            state.message?.let { msg -> Banner(msg, Modifier.padding(bottom = 12.dp)) }
 
             GlassButton(
                 text = "Follow flight",
