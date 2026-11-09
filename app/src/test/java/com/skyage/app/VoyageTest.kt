@@ -146,4 +146,10 @@ class VoyageTest {
         assertEquals(0, stats.countries)
         assertEquals(emptyList<String>(), stats.visits.map { it.code })
     }
+
+    @Test
+    fun `a timestamp instant cannot represent is dropped, not fatal`() {
+        val text = "9223372036854775807|B61533|B6|SFO|JFK\n-1|B61533|B6|SFO|JFK\n" + encodeTrips(trips)
+        assertEquals(trips, decodeTrips(text))
+    }
 }

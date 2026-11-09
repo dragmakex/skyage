@@ -31,7 +31,9 @@ internal fun encodeTrips(trips: List<Trip>): String = trips.joinToString("\n") {
 internal fun decodeTrips(text: String): List<Trip> = text.lineSequence().mapNotNull { line ->
     val p = line.split('|')
     if (p.size < 5) return@mapNotNull null
-    val date = p[0].toLongOrNull() ?: return@mapNotNull null
+    // Outside this range Instant.ofEpochMilli throws, and the log is read on every Voyage open.
+    val date = p[0].toLongOrNull()?.takeIf { it in 946_684_800_000L..4_102_444_800_000L }
+        ?: return@mapNotNull null
     if (p[1].isBlank() || p[3].length != 3 || p[4].length != 3) return@mapNotNull null
     Trip(date = date, number = p[1], airlineIata = p[2], originIata = p[3], destIata = p[4])
 }
