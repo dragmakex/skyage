@@ -115,4 +115,35 @@ class VoyageTest {
         val trips = decodeTrips("$line\n$line")
         assertEquals(1, trips.size)
     }
+
+    @Test
+    fun `a file written with windows line endings still reads`() {
+        val text = encodeTrips(trips).replace("\n", "\r\n")
+        assertEquals(trips, decodeTrips(text))
+    }
+
+    @Test
+    fun `a half written line at the end is dropped, not fatal`() {
+        val text = encodeTrips(trips) + "\n1793983866003|B61533"
+        assertEquals(trips, decodeTrips(text))
+    }
+
+    @Test
+    fun `a trip that starts and ends at the same airport is one airport, no distance`() {
+        val stats = voyageStats(listOf(Trip(date(2026, 5, 1), "KL1", "KL", "AMS", "AMS"))) { lookups[it] }
+        assertEquals(1, stats.flights)
+        assertEquals(1, stats.airports)
+        assertEquals(1, stats.countries)
+        assertEquals(1, stats.visits.single().visits)
+        assertEquals(0.0, stats.km, 0.001)
+    }
+
+    @Test
+    fun `an empty log totals nothing`() {
+        val stats = voyageStats(emptyList()) { lookups[it] }
+        assertEquals(0, stats.flights)
+        assertEquals(0, stats.airports)
+        assertEquals(0, stats.countries)
+        assertEquals(emptyList<String>(), stats.visits.map { it.code })
+    }
 }
