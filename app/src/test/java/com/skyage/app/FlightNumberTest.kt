@@ -28,4 +28,28 @@ class FlightNumberTest {
         assertNull(splitFlightNumber("UA"))
         assertNull(splitFlightNumber("UAL123"))
     }
+
+    @Test
+    fun `typed separators and stray spaces are ignored`() {
+        assertEquals("B6" to "1533", splitFlightNumber(" B6\t1533\n"))
+        assertEquals("B6" to "1533", splitFlightNumber("B6 - 1533"))
+        assertEquals("B6" to "1533", splitFlightNumber("b6\u00A01533"))
+    }
+
+    @Test
+    fun `only ascii letters and digits count`() {
+        // Android keyboards and pasted text can carry full-width or Arabic-Indic digits, which
+        // Char.isDigit accepts; none of them can be part of a real airline code.
+        assertNull(splitFlightNumber("B6\u0661\u0662\u0663"))
+        assertNull(splitFlightNumber("B6\uFF11\uFF15\uFF13\uFF13"))
+        assertNull(splitFlightNumber("\u0411\u041661533"))
+    }
+
+    @Test
+    fun `trailing characters make the input unusable rather than partially read`() {
+        assertNull(splitFlightNumber("B615330"))
+        assertNull(splitFlightNumber("B6A1533"))
+        assertNull(splitFlightNumber(""))
+        assertNull(splitFlightNumber("   "))
+    }
 }
