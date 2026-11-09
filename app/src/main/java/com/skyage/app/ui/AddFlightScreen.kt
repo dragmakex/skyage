@@ -25,6 +25,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +44,26 @@ import com.skyage.app.ui.theme.Sky
 
 private enum class Slot { ORIGIN, DEST }
 
+/** An airport the user picked is kept field by field; a code alone can be ambiguous. */
+private val AirportSaver = listSaver<Airport?, Any?>(
+    save = {
+        if (it == null) emptyList()
+        else listOf(it.name, it.iata, it.icao, it.city, it.country, it.lat, it.lon, it.relevance)
+    },
+    restore = {
+        if (it.isEmpty()) null else Airport(
+            name = it[0] as String,
+            iata = it[1] as String?,
+            icao = it[2] as String?,
+            city = it[3] as String,
+            country = it[4] as String,
+            lat = it[5] as Double,
+            lon = it[6] as Double,
+            relevance = it[7] as Int,
+        )
+    },
+)
+
 @Composable
 fun AddFlightScreen(
     state: UiState,
@@ -50,10 +72,11 @@ fun AddFlightScreen(
     onResolve: (String) -> ParsedFlightNumber?,
     onSave: (ParsedFlightNumber, Airport?, Airport?) -> Boolean,
 ) {
-    var numberText by remember { mutableStateOf("") }
-    var origin by remember { mutableStateOf<Airport?>(null) }
-    var dest by remember { mutableStateOf<Airport?>(null) }
-    var slot by remember { mutableStateOf<Slot?>(null) }
+    // Remembered across rotation: losing a half-typed flight to a screen turn is not acceptable.
+    var numberText by rememberSaveable { mutableStateOf("") }
+    var origin by rememberSaveable(stateSaver = AirportSaver) { mutableStateOf<Airport?>(null) }
+    var dest by rememberSaveable(stateSaver = AirportSaver) { mutableStateOf<Airport?>(null) }
+    var slot by rememberSaveable { mutableStateOf<Slot?>(null) }
 
     val parsed = remember(numberText) { onResolve(numberText) }
     val scroll = rememberScrollState()

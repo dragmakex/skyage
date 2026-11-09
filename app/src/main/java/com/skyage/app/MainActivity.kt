@@ -10,6 +10,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,10 +42,30 @@ private sealed interface Screen {
     data object Voyage : Screen
 }
 
+/** Rotation rebuilds the activity; the screen the user was on has to survive that. */
+private val ScreenSaver = listSaver<Screen, String>(
+    save = {
+        when (it) {
+            Screen.Home -> listOf("home")
+            Screen.Add -> listOf("add")
+            Screen.Voyage -> listOf("voyage")
+            is Screen.Detail -> listOf("detail", it.key)
+        }
+    },
+    restore = {
+        when (it.firstOrNull()) {
+            "add" -> Screen.Add
+            "voyage" -> Screen.Voyage
+            "detail" -> Screen.Detail(it.getOrElse(1) { "" })
+            else -> Screen.Home
+        }
+    },
+)
+
 @Composable
 private fun SkyageRoot(vm: AppViewModel) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var screen by remember { mutableStateOf<Screen>(Screen.Home) }
+    var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(Screen.Home) }
 
     // Keep the live snapshot fresh while the UI is on screen.
     LaunchedEffect(state.ready) {
