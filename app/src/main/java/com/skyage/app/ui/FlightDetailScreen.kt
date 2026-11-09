@@ -1,5 +1,6 @@
 package com.skyage.app.ui
 
+import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import com.skyage.app.data.Airport
 import com.skyage.app.data.FlightPhase
@@ -61,6 +63,11 @@ fun FlightDetailScreen(
             }
         },
     ) { padding ->
+        // A fixed 260 dp map fills a landscape window on its own, leaving the phase and the numbers
+        // below the fold with nothing on screen to suggest they are there.
+        val mapHeight =
+            if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE) 150.dp
+            else 260.dp
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -75,7 +82,7 @@ fun FlightDetailScreen(
                 live = view.live,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
+                    .height(mapHeight)
                     .clip(RoundedCornerShape(18.dp)),
             )
 
