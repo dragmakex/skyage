@@ -195,6 +195,15 @@ fun AddFlightScreen(
                         slot = null
                     }
                 }
+                // An empty panel with no words reads as a stuck screen, not as "no match".
+                if (state.airportQuery.isNotBlank() && state.airportResults.isEmpty()) {
+                    Text(
+                        text = "No airport matches that.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Sky.SecondaryLabel,
+                        modifier = Modifier.padding(start = 6.dp, top = 12.dp),
+                    )
+                }
             }
 
             Spacer(Modifier.height(24.dp))
