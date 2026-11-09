@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +39,9 @@ import java.time.Month
 import java.time.format.TextStyle
 import java.util.Locale
 
+/** Keeps a nullable Int filter across a rotation; the default saver cannot hold null. */
+private val NullableIntSaver = Saver<Int?, Int>(save = { it ?: -1 }, restore = { if (it < 0) null else it })
+
 /**
  * Where the user has been: every followed flight, counted by airport and country, filtered by the
  * year and month it was logged.
@@ -47,8 +52,9 @@ fun VoyageScreen(
     airports: List<Airport>,
     onBack: () -> Unit,
 ) {
-    var year by remember { mutableStateOf<Int?>(null) }
-    var month by remember { mutableStateOf<Int?>(null) }
+    // rememberSaveable: turning the phone should not throw the filter away.
+    var year by rememberSaveable(stateSaver = NullableIntSaver) { mutableStateOf<Int?>(null) }
+    var month by rememberSaveable(stateSaver = NullableIntSaver) { mutableStateOf<Int?>(null) }
 
     val byCode = remember(airports) { airports.associateBy { it.code } }
     val years = remember(trips) { tripYears(trips) }
