@@ -104,15 +104,22 @@ fun HomeScreen(
                     camera = camera,
                     modifier = Modifier.fillMaxSize().hazeSource(hazeState),
                 )
-                StatusPill(
-                    state = state,
-                    onRefresh = onRefresh,
+                Column(
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
                         .padding(horizontal = 16.dp, vertical = 10.dp)
                         .fillMaxWidth(),
-                )
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    StatusPill(state = state, onRefresh = onRefresh)
+                    // A rate limit or outage is the usual reason a followed flight suddenly has
+                    // no live data, and it must be readable while the sheet still peeks. Once
+                    // the sheet is expanded it covers this spot, so the list repeats it there.
+                    if (sheetState.currentValue != SheetValue.Expanded) {
+                        state.message?.let { msg -> Banner(msg) }
+                    }
+                }
             }
         }
     }
@@ -219,8 +226,8 @@ private fun FlightsSheet(
             }
         }
 
-        // Surfaced whatever the list shows: a rate limit or outage is the usual reason a
-        // followed flight suddenly has no live data.
+        // Shown here too: the expanded sheet covers the pill row where the same message
+        // normally appears, and the expanded sheet is exactly where a stale flight is read.
         state.message?.let { msg -> Banner(msg, Modifier.padding(bottom = 12.dp)) }
 
         when {
