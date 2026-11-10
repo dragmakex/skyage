@@ -79,6 +79,7 @@ data class VoyageStats(
     val flights: Int,
     val airports: Int,
     val countries: Int,
+    val airlines: Int,
     val km: Double,
     val visits: List<AirportVisit>,
 )
@@ -106,6 +107,7 @@ internal fun voyageStats(trips: List<Trip>, airport: (String) -> Airport?): Voya
         flights = trips.size,
         airports = codes.size,
         countries = resolved.values.map { it.country }.distinct().size,
+        airlines = trips.map { it.airlineIata }.filter { it.isNotBlank() }.distinct().size,
         km = km,
         visits = visits,
     )

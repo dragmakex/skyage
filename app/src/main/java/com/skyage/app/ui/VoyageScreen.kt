@@ -111,21 +111,26 @@ fun VoyageScreen(
                                 modifier = Modifier.weight(1f),
                             )
                             StatCell(
-                                label = "Airports",
-                                value = "%d".format(stats.airports),
+                                label = "Distance",
+                                value = "%,d km".format(stats.km.toInt()),
                                 modifier = Modifier.weight(1f),
                             )
                         }
                         Spacer(Modifier.height(14.dp))
                         Row(Modifier.fillMaxWidth()) {
                             StatCell(
+                                label = "Airports",
+                                value = "%d".format(stats.airports),
+                                modifier = Modifier.weight(1f),
+                            )
+                            StatCell(
                                 label = "Countries",
                                 value = "%d".format(stats.countries),
                                 modifier = Modifier.weight(1f),
                             )
                             StatCell(
-                                label = "Distance",
-                                value = "%,d km".format(stats.km.toInt()),
+                                label = "Airlines",
+                                value = "%d".format(stats.airlines),
                                 modifier = Modifier.weight(1f),
                             )
                         }

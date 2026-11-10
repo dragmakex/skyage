@@ -152,4 +152,17 @@ class VoyageTest {
         val text = "9223372036854775807|B61533|B6|SFO|JFK\n-1|B61533|B6|SFO|JFK\n" + encodeTrips(trips)
         assertEquals(trips, decodeTrips(text))
     }
+
+    @Test
+    fun `airlines counts carriers, not flights`() {
+        val log = listOf(
+            Trip(date(2026, 5, 1), "BA286", "BA", "SFO", "LHR"),
+            Trip(date(2026, 5, 2), "BA287", "BA", "LHR", "SFO"),
+            Trip(date(2026, 5, 3), "KL641", "KL", "AMS", "JFK"),
+            Trip(date(2026, 5, 4), "KLM641", "", "AMS", "JFK"),
+        )
+        val stats = voyageStats(log) { lookups[it] }
+        assertEquals(4, stats.flights)
+        assertEquals(2, stats.airlines)
+    }
 }
