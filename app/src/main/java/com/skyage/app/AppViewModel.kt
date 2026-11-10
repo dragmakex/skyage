@@ -184,7 +184,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun removeFlight(key: String) {
         tracked = tracked.filterNot { it.key == key }
-        store.save(tracked)
+        // Same rule as adding: the file write leaves the main thread, so a tap never waits on disk.
+        val kept = tracked
+        viewModelScope.launch(Dispatchers.IO) { store.save(kept) }
         _state.update { it.copy(views = buildViews()) }
     }
 
