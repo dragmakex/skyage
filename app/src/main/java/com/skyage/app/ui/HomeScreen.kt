@@ -52,7 +52,7 @@ import com.skyage.app.UiState
 import com.skyage.app.data.Airport
 import com.skyage.app.data.FlightPhase
 import com.skyage.app.data.FlightView
-import com.skyage.app.data.offRouteToleranceKm
+import com.skyage.app.data.offRoute
 import com.skyage.app.geo.GlobeCamera
 import com.skyage.app.ui.theme.Sky
 import dev.chrisbanes.haze.hazeSource
@@ -337,7 +337,7 @@ internal fun routeSummary(view: FlightView): String =
  * badge already says so; calling it "off route" would blame the route for a lost signal.
  */
 internal fun isOffRoute(view: FlightView): Boolean =
-    view.live != null && (view.offRouteKm ?: 0.0) > offRouteToleranceKm(view.routeKm)
+    view.live != null && offRoute(view.routeKm, view.offRouteKm, view.viaKm)
 
 internal fun liveSummary(view: FlightView): String {
     val live = view.live ?: return ""

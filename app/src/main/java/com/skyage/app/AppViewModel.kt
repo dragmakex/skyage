@@ -10,7 +10,7 @@ import com.skyage.app.data.FlightPhase
 import com.skyage.app.data.FlightStore
 import com.skyage.app.data.FlightView
 import com.skyage.app.data.LiveState
-import com.skyage.app.data.offRouteToleranceKm
+import com.skyage.app.data.offRoute
 import com.skyage.app.data.OpenSkyClient
 import com.skyage.app.data.ParsedFlightNumber
 import com.skyage.app.data.TrackedFlight
@@ -213,10 +213,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 crossTrackKm(origin.lat, origin.lon, dest.lat, dest.lon, fix.lat, fix.lon)
             } else null
 
+            val viaKm = if (positioned) {
+                distanceKm(origin.lat, origin.lon, fix.lat, fix.lon) +
+                    distanceKm(fix.lat, fix.lon, dest.lat, dest.lon)
+            } else null
+
             // A callsign is not unique per route, so a position far from the route means the
             // aircraft we matched is probably a different flight. Report no progress instead of a
             // confident 0%.
-            val progress = if (positioned && (offRouteKm ?: 0.0) <= offRouteToleranceKm(routeKm)) {
+            val progress = if (positioned && !offRoute(routeKm, offRouteKm, viaKm)) {
                 progressAlongRoute(origin.lat, origin.lon, dest.lat, dest.lon, fix.lat, fix.lon)
             } else null
 
@@ -242,6 +247,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 routeKm = routeKm,
                 remainingKm = if (routeKm != null && progress != null) routeKm * (1 - progress) else null,
                 offRouteKm = offRouteKm,
+                viaKm = viaKm,
             )
         }
         .sortedWith(

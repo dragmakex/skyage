@@ -93,6 +93,8 @@ data class FlightView(
     val remainingKm: Double?,
     /** Perpendicular offset from the route, in km. Large values mean the match is doubtful. */
     val offRouteKm: Double? = null,
+    /** Origin->fix->destination distance in km: how far the aircraft actually has to travel. */
+    val viaKm: Double? = null,
 )
 
 /**
@@ -102,8 +104,19 @@ data class FlightView(
 const val OFF_ROUTE_THRESHOLD_KM = 400.0
 
 /**
- * A flat radius is too strict on long flights — Toronto-Delhi is filed 1,600 km off the great
- * circle because winds and airspace beat geometry — so the tolerance grows with the route.
+ * How much longer the journey through the fix may be than the non-stop distance before the match
+ * is doubted. Offset alone cannot decide this: Toronto-Delhi runs south of its great circle by
+ * 2,400 km over Poland because winds and airspace beat geometry, yet only 7% longer in distance.
+ * A different aircraft carrying the same callsign is off the route in distance too.
  */
-fun offRouteToleranceKm(routeKm: Double?): Double =
-    maxOf(OFF_ROUTE_THRESHOLD_KM, (routeKm ?: 0.0) * 0.15)
+const val DETOUR_LIMIT = 1.35
+
+/**
+ * Whether the matched aircraft can be believed to be flying this route: close to it, or far from it
+ * but still plausibly on its way. Without a route there is nothing to doubt.
+ */
+fun offRoute(routeKm: Double?, offRouteKm: Double?, viaKm: Double?): Boolean {
+    if (routeKm == null || offRouteKm == null) return false
+    if (offRouteKm <= OFF_ROUTE_THRESHOLD_KM) return false
+    return viaKm == null || viaKm > routeKm * DETOUR_LIMIT
+}
