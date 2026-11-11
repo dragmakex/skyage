@@ -331,8 +331,13 @@ private fun FlightCard(view: FlightView, onClick: () -> Unit) {
 internal fun routeSummary(view: FlightView): String =
     view.routeKm?.let { "%,d km".format(it.toInt()) } ?: "Route unknown"
 
+/**
+ * Only a live fix can be off the route it was filed on. A position cached from an earlier day, or
+ * one that stopped arriving, is a missing aircraft rather than a mis-matched one, and the NO SIGNAL
+ * badge already says so; calling it "off route" would blame the route for a lost signal.
+ */
 internal fun isOffRoute(view: FlightView): Boolean =
-    (view.offRouteKm ?: 0.0) > offRouteToleranceKm(view.routeKm)
+    view.live != null && (view.offRouteKm ?: 0.0) > offRouteToleranceKm(view.routeKm)
 
 internal fun liveSummary(view: FlightView): String {
     val live = view.live ?: return ""
