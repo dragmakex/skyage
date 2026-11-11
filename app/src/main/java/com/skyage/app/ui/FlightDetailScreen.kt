@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import com.skyage.app.data.Airport
 import com.skyage.app.data.FlightPhase
+import com.skyage.app.data.LiveState
 import com.skyage.app.data.FlightView
 import com.skyage.app.ui.isOffRoute
 import com.skyage.app.ui.theme.Sky
@@ -150,39 +151,24 @@ fun FlightDetailScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            if (view.live != null) {
-                SurfaceCard(modifier = Modifier.fillMaxWidth()) {
-                    Column {
-                        Row(Modifier.fillMaxWidth()) {
-                            StatCell(
-                                label = "Altitude",
-                                value = view.live.baroAltitudeM?.let {
-                                    "%,d ft".format((it * 3.28084).toInt())
-                                } ?: "—",
-                                modifier = Modifier.weight(1f),
-                            )
-                            StatCell(
-                                label = "Ground speed",
-                                value = view.live.velocityMs?.let {
-                                    "%,d km/h".format((it * 3.6).toInt())
-                                } ?: "—",
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        Spacer(Modifier.height(16.dp))
-                        Row(Modifier.fillMaxWidth()) {
-                            StatCell(
-                                label = "Heading",
-                                value = view.live.headingDeg?.let { "%03d°".format(it.toInt()) } ?: "—",
-                                modifier = Modifier.weight(1f),
-                            )
-                            StatCell(
-                                label = "Vertical rate",
-                                value = view.live.verticalRateMs?.let {
-                                    "%+,.0f ft/min".format(it * 196.85)
-                                } ?: "—",
-                                modifier = Modifier.weight(1f),
-                            )
+            val live = view.live
+            if (live != null) {
+                val stats = liveStats(live)
+                if (stats.isNotEmpty()) {
+                    SurfaceCard(modifier = Modifier.fillMaxWidth()) {
+                        Column {
+                            stats.chunked(2).forEachIndexed { index, row ->
+                                if (index > 0) Spacer(Modifier.height(16.dp))
+                                Row(Modifier.fillMaxWidth()) {
+                                    row.forEach { (label, value) ->
+                                        StatCell(
+                                            label = label,
+                                            value = value,
+                                            modifier = Modifier.weight(1f),
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -276,6 +262,18 @@ private fun utcDate(millis: Long): String {
     fmt.timeZone = TimeZone.getTimeZone("UTC")
     return fmt.format(Date(millis))
 }
+
+/**
+ * The numbers worth showing for a live fix, in reading order. A value the feed did not report is
+ * left out rather than printed as a dash: an on-ground aircraft has no altitude and no vertical
+ * rate, and two dashes say less than the two figures that are actually known.
+ */
+internal fun liveStats(live: LiveState): List<Pair<String, String>> = listOfNotNull(
+    live.baroAltitudeM?.let { "Altitude" to "%,d ft".format((it * 3.28084).toInt()) },
+    live.velocityMs?.let { "Ground speed" to "%,d km/h".format((it * 3.6).toInt()) },
+    live.headingDeg?.let { "Heading" to "%03d°".format(it.toInt()) },
+    live.verticalRateMs?.let { "Vertical rate" to "%+,.0f ft/min".format(it * 196.85) },
+)
 
 /** Ground receivers report in UTC; the phone shows local time, so say which. */
 private fun utcTime(epochSeconds: Long): String {
