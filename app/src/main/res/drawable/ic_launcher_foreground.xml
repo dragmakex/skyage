@@ -5,9 +5,9 @@
     android:viewportHeight="108">
     <!-- Swept wing / ascent mark -->
     <path
-        android:fillColor="#BF5AF2"
+        android:fillColor="#3E7BFA"
         android:pathData="M54,28 L64,64 L54,58 L44,64 Z" />
     <path
-        android:fillColor="#7A2EA8"
+        android:fillColor="#1B3C86"
         android:pathData="M54,46 L78,74 L54,68 L30,74 Z" />
 </vector>
