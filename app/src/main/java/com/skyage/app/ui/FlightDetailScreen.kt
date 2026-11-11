@@ -210,7 +210,7 @@ fun FlightDetailScreen(
                             "On the ground at ${view.dest?.code ?: "its destination"}."
                         } else {
                             "Landed at ${view.dest?.code ?: "its destination"}." +
-                                (view.lastSeenAt?.let { " Last picked up at ${utcTime(it)}." } ?: "")
+                                (view.lastSeenAt?.let { " Last picked up ${heardWhen(it)}." } ?: "")
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Sky.SecondaryLabel,
@@ -223,7 +223,7 @@ fun FlightDetailScreen(
                 SurfaceCard(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = noSignalCopy(
-                            time = view.lastSeenAt?.let { utcTime(it) },
+                            time = view.lastSeenAt?.let { heardWhen(it) },
                             remainingKm = view.remainingKm,
                             destCode = view.dest?.code,
                         ),
@@ -245,13 +245,36 @@ fun FlightDetailScreen(
 internal fun noSignalCopy(time: String?, remainingKm: Double?, destCode: String?): String = when {
     time != null && destCode != null && remainingKm != null -> {
         val distance = "%,d".format(remainingKm.toInt())
-        "Last heard at $time, $distance km from $destCode. Nothing since: it may have landed " +
+        "Last heard $time, $distance km from $destCode. Nothing since: it may have landed " +
             "elsewhere, or flown out of receiver coverage."
     }
     time != null ->
-        "Last heard at $time, and nothing since. It may have landed, or flown out of receiver " +
+        "Last heard $time, and nothing since. It may have landed, or flown out of receiver " +
             "coverage."
     else -> "Not picked up yet. It may not have left, or it is out of receiver coverage."
+}
+
+/**
+ * When the aircraft was last heard, phrased to follow "Last heard". A fix cached on an earlier day
+ * also
+ * says which day: the cache outlives the process, so "13:51Z" on its own would read as a fix
+ * from this afternoon when it is in fact from yesterday.
+ */
+internal fun heardWhen(epochSeconds: Long, nowMillis: Long = System.currentTimeMillis()): String {
+    val time = utcTime(epochSeconds)
+    return when (utcDay(epochSeconds * 1_000)) {
+        utcDay(nowMillis) -> "at $time"
+        utcDay(nowMillis) - 1 -> "yesterday at $time"
+        else -> "on ${utcDate(epochSeconds * 1_000)} at $time"
+    }
+}
+
+private fun utcDay(millis: Long): Long = millis / 86_400_000L
+
+private fun utcDate(millis: Long): String {
+    val fmt = SimpleDateFormat("d MMM", Locale.getDefault())
+    fmt.timeZone = TimeZone.getTimeZone("UTC")
+    return fmt.format(Date(millis))
 }
 
 /** Ground receivers report in UTC; the phone shows local time, so say which. */
